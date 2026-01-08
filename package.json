@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-    "type": "module",
+  "type": "module",
   "scripts": {
     "start": "node server"
   },
@@ -20,6 +20,8 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.18.0",
     "multer": "^2.0.2",
-    "multer-storage-cloudinary": "^4.0.0"
+    "multer-storage-cloudinary": "^4.0.0",
+    "nodemailer": "^7.0.10",
+    "pdfkit": "^0.17.2"
   }
 }

@@ -1,18 +1,23 @@
-import express from 'express';
-import { upload, uploadMarksheet } from '../Middleware/Multer.js';
+import express from "express";
+import { upload, uploadMarksheet } from "../Middleware/Multer.js";
 import {
-  step1Create, step2Update, step3Update, step4Update, getStudent,
+  step1Create,
+  step2Update,
+  step3Update,
+  step4Update,
+  getStudent,
   studentLogin,
-  StudentCredentials
-} from '../Controllers/Student/StudentController.js';
-import { protect } from '../Middleware/authMiddleware.js';
+  StudentCredentials,
+  studentProfile
+} from "../Controllers/Student/StudentController.js";
+import { protect } from "../Middleware/authMiddleware.js";
 const router = express.Router();
-// Student Registration 
+// Student Registration
 // Step1: use upload.single('profileImage')
-router.post('/step1', upload.single('profileImage'), step1Create);
+router.post("/step1", upload.single("profileImage"), step1Create);
 
 // Step2:
-router.post('/step2/:id', step2Update);
+router.post("/step2/:id", step2Update);
 
 router.post(
   "/step3/:studentId",
@@ -21,20 +26,16 @@ router.post(
 );
 
 // Step4:
-router.post('/step4/:id', step4Update);
-
+router.post("/step4/:id", step4Update);
 
 // student credentials Register with password
-router.post('/set-credentials' , StudentCredentials);
+router.post("/set-credentials", StudentCredentials);
 // Student Login Route
 
-router.post('/login' , studentLogin)
+router.post("/login", studentLogin);
 
-router.get('/me' , protect , (req , res)=>{
-res.json({ success: true, student: req.student });
-})
-
+router.get("/me", protect, studentProfile);
 
 // Get student:
-router.get('/:id', protect, getStudent);
+router.get("/:id", protect, getStudent);
 export default router;

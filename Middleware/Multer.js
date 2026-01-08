@@ -38,3 +38,20 @@ const facultyStorage = new CloudinaryStorage({
 })
 
 export const uploadFacultyImage = multer({storage:facultyStorage});
+
+const coordinatorStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "Coordinator_Uploads",
+    allowed_formats: ["jpg", "jpeg", "png", "pdf"],
+  }
+});
+
+const uploadCoordinatorFiles = multer({
+  storage: coordinatorStorage,
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+}).fields([
+  { name: 'profileImage', maxCount: 1 },
+  { name: 'degreeCertificate', maxCount: 1 }
+]);
+export default uploadCoordinatorFiles

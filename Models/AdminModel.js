@@ -6,20 +6,25 @@ const AdminSchema = mongoose.Schema({
         required:true,
         trim:true,
     },
-    email:{
-        type:String,
-        unique:true,
-        required:true,
-        lowercase:true,
-    },
-     password:{
-        type:String,
-        required:true,
-     },
-     role:{
-        type:String,
-        default:'admin',
-     },
+    user:{
+         type:mongoose.Schema.Types.ObjectId,
+             ref:'User',
+              required:true,
+    }
+    // email:{
+    //     type:String,
+    //     unique:true,
+    //     required:true,
+    //     lowercase:true,
+    // },
+    //  password:{
+    //     type:String,
+    //     required:true,
+    //  },
+    //  role:{
+    //     type:String,
+    //     default:'admin',
+    //  },
 
 },   {timestamps:true}
 )

@@ -1,5 +1,8 @@
 import Faculty from "../../Models/TeacherModel.js";
+import User from "../../Models/userModel.js";
 import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
+import { sendFacultyEmail } from "../../utils/FREmail.js";
 // ITS ADMIN SIDE CONTROLLERS
 export const facultyAdd = async (req, res) => {
   try {
@@ -13,6 +16,7 @@ export const facultyAdd = async (req, res) => {
       dateOfBirth: dobString,
       gender,
       city,
+      address,
       department,
       designation,
       qualification,
@@ -25,7 +29,10 @@ export const facultyAdd = async (req, res) => {
       bankName,
       emergencyContact,
       emergencyPerson,
+      userName,
+      password,
     } = req.body;
+
     // Validation checks
     const requiredFields = [
       "employeeID",
@@ -34,6 +41,7 @@ export const facultyAdd = async (req, res) => {
       "email",
       "phone",
       "cnic",
+      "address",
       "dateOfBirth",
       "gender",
       "city",
@@ -49,6 +57,8 @@ export const facultyAdd = async (req, res) => {
       "bankName",
       "emergencyContact",
       "emergencyPerson",
+      "userName",
+      "password",
     ];
     const missingFields = requiredFields.filter((field) => !req.body[field]);
     if (missingFields.length > 0) {
@@ -63,26 +73,36 @@ export const facultyAdd = async (req, res) => {
         message: "Profile Image is not uploaded",
       });
     }
+    // Check for duplicates in Faculty collection
     const existingFaculty = await Faculty.findOne({
-      $or: [
-        { employeeID: req.body.employeeID },
-        { email: req.body.email },
-        { cnic: req.body.cnic },
-      ],
+      $or: [{ employeeID }, { cnic }],
     });
+
     if (existingFaculty) {
       let duplicateField = "";
-      if (existingFaculty.employeeID === req.body.employeeID)
+      if (existingFaculty.employeeID === employeeID)
         duplicateField = "Employee ID";
-      else if (existingFaculty.email === req.body.email)
-        duplicateField = "Email";
-      else if (existingFaculty.cnic === req.body.cnic) duplicateField = "CNIC";
+      else if (existingFaculty.cnic === cnic) duplicateField = "CNIC";
 
       return res.status(400).json({
         success: false,
         message: `${duplicateField} already exists`,
       });
     }
+    const normalizeEmail = email.toLowerCase().trim();
+    const existingUser = await User.findOne({ email: normalizeEmail });
+    if (existingUser && existingUser.role === "faculty") {
+      const existingFacultyWithUser = await User.findOne({
+        user: existingUser._id,
+      });
+      if (existingFacultyWithUser) {
+        return res.status(400).json({
+          success: false,
+          message: "Faculty already exists with this email",
+        });
+      }
+    }
+
     const cnicRegex = /^\d{13}$/;
     if (!cnicRegex.test(cnic)) {
       return res.status(400).json({
@@ -127,31 +147,86 @@ export const facultyAdd = async (req, res) => {
         message: "Salary must be greater than 0",
       });
     }
+    let user;
+    if(!existingUser){
+      const salt = await bcrypt.genSalt(10);
+      const hashPassword = await bcrypt.hash(password , salt);
+      user = await User.create({
+        email:normalizeEmail,
+        password:hashPassword,
+        role:'faculty',
+        isActive: true,
+        lastLogin: new Date(),
+      })
+    }
+    else{
+      if(existingUser.role === 'faculty'){
+        return res.status(400).json({
+          success:false,
+          message:'User already exist with this email',
+        })
+      }
+      existingUser.role === 'faculty';
+      if(!existingUser.password){
+         const salt = await bcrypt.genSalt(10);
+        existingUser.password = await bcrypt.hash(password, salt);
+    
+      }
+         await existingUser.save();
+         user = existingUser;
+    }
+    
+    // let user = await User.findOne({ email: normalizeEmail });
+    // if (!user) {
+    //   const salt = await bcrypt.genSalt(10);
+    //   const hashPassword = await bcrypt.hash(password, salt);
+    //   user = await User.create({
+    //     email: normalizeEmail,
+    //     password: hashPassword,
+    //     role: "faculty",
+    //     isActive: true,
+    //     lastLogin: new Date(),
+    //   });
+    // }
+    // else{
+    //    if (user.role === "faculty") {
+    //     return res.status(400).json({
+    //       success: false,
+    //       message: "Faculty already exists with this email",
+    //     });
+    //   }
+    //   user.role = "faculty";
+    //   user.password = user.password || (await bcrypt.hash(password, 10));
+    //   await user.save();
+    // }
 
     const newFaculty = new Faculty({
+      user: user._id,
       employeeID,
       firstName,
       lastName,
-      email: email.toLowerCase().trim(),
       phone,
       cnic,
-      dateOfBirth: new Date(dobString),
+      dateOfBirth,
       gender,
       city,
+      address,
       department,
       designation,
       qualification,
       specialization,
-      experience: parseInt(experience),
-      joiningDate: new Date(joinString),
-      salary: parseFloat(salary),
+      experience: Number(experience),
+      joiningDate,
+      salary: Number(salary),
       accountTitle,
       accountNumber,
       bankName,
       emergencyContact,
       emergencyPerson,
       profileImage: req.file.path,
+      userName,
     });
+
     await newFaculty.save();
 
     res.status(201).json({
@@ -159,12 +234,12 @@ export const facultyAdd = async (req, res) => {
       message: "Faculty Member Saved Successfully",
       data: {
         id: newFaculty._id,
-        employeeID: newFaculty.employeeID,
-        firstName: newFaculty.firstName,
-        lastName: newFaculty.lastName,
-        email: newFaculty.email,
-        department: newFaculty.department,
-        designation: newFaculty.designation,
+        employeeID,
+        firstName,
+        lastName,
+        email: user.email,
+        department,
+        designation,
         profileImage: newFaculty.profileImage,
       },
     });
@@ -192,15 +267,40 @@ export const facultyAdd = async (req, res) => {
     });
   }
 };
+// ============================================================================
 
+export const sendFacultyCredentials = async (req, res) => {
+  try {
+    const data = req.body;
+    // 2. Send email with HTML
+
+    await sendFacultyEmail({ ...data });
+
+    res.json({
+      success: true,
+      message: "Faculty credentials email sent successfully!",
+    });
+  } catch (error) {
+    console.log("Email sending error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to send email",
+    });
+  }
+};
+// =======================================================
 export const getAllFaculties = async (req, res) => {
   try {
-    const faculties = await Faculty.find().sort({ createdAt: -1 });
+    const faculties = await Faculty.find()
+      .populate("user", "email")
+      .sort({ createdAt: -1 });
+    console.log("First faculty user data:", faculties[0]?.user);
+    console.log("First faculty email from user:", faculties[0]?.user?.email);
     const formatted = faculties.map((f) => ({
       _id: f._id,
       employeeID: f.employeeID,
       name: `${f.firstName} ${f.lastName}`,
-      email: f.email,
+      email: f.user?.email,
       phone: f.phone,
       department: f.department,
       designation: f.designation,
@@ -210,14 +310,16 @@ export const getAllFaculties = async (req, res) => {
       joiningDate: f.joiningDate.toISOString().split("T")[0],
       status: f.status,
       image: f.profileImage,
-      salary:f.salary,
+      salary: f.salary,
       coursesAssigned: f.coursesAssigned,
+      userRole: f.user?.role,
+      isActive: f.user?.isActive,
     }));
     res.status(200).json({
-        success:true,
-        message:"Faculty Record fetched Successfully",
-        data:formatted,
-    })
+      success: true,
+      message: "Faculty Record fetched Successfully",
+      data: formatted,
+    });
   } catch (error) {
     console.error("Error fetching faculty:", error);
     res.status(500).json({
@@ -226,46 +328,53 @@ export const getAllFaculties = async (req, res) => {
     });
   }
 };
-
-export const deleteFaculty = async(req ,res)=>{
-    try {
-        console.log("Delete Request Faculty ID is:",req.params.id);
-        const faculty = await Faculty.findByIdAndDelete(req.params.id);
-        if(!faculty)
-        return res.status(404).json({
-        success:false,
-        message:"Faculty Not Found!!",
-        })
-        return res.status(200).json({
-            success:true,
-            message:"Faculty Deleted successfully",
-        })
-        
-    } catch (error) {
-        res.status(500).json({
-            success:false,
-            message:error.message
-        })
+// =======================================================
+export const deleteFaculty = async (req, res) => {
+  try {
+    console.log("Delete Request Faculty ID is:", req.params.id);
+    // 1. Find the faculty first to get the user reference
+    const faculty = await Faculty.findById(req.params.id);
+    if (!faculty) {
+      return res.status(404).json({
+        success: false,
+        message: "Faculty Not Found!!",
+      });
     }
-}
-export const getFacultyById = async(req,res)=>{
-    
-    try {
-      const {id} = req.params;
-       if (!mongoose.Types.ObjectId.isValid(id)) {
+    await User.findByIdAndDelete(faculty.user);
+    await Faculty.findByIdAndDelete(req.params.id);
+    return res.status(200).json({
+      success: true,
+      message: "Faculty Deleted successfully from both collections",
+    });
+  } catch (error) {
+    console.error("Delete Faculty Error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+// =========================================================
+export const getFacultyById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
         message: "Invalid faculty ID format",
       });
     }
-          console.log("Faculty ID received:", req.params.id);
-        const faculty = await Faculty.findById(req.params.id)
-        if(!faculty){
-            return res.status(404).json({
-                success:false,
-                message:"Faculty Member not found",
-            })
-        }
+    console.log("Faculty ID received:", req.params.id);
+    const faculty = await Faculty.findById(req.params.id).populate(
+      "user",
+      "email"
+    );
+    if (!faculty) {
+      return res.status(404).json({
+        success: false,
+        message: "Faculty Member not found",
+      });
+    }
     const formatted = {
       id: faculty._id,
       name: `${faculty.firstName} ${faculty.lastName}`,
@@ -274,40 +383,40 @@ export const getFacultyById = async(req,res)=>{
       phone: faculty.phone,
       department: faculty.department,
       designation: faculty.designation,
-      qualification:faculty.qualification,
+      qualification: faculty.qualification,
       specialization: faculty.specialization,
       experience: `${faculty.experience} years`,
       joiningDate: faculty.joiningDate?.toISOString().split("T")[0],
       status: faculty.status,
-      cnic:faculty.cnic,
-      address:faculty.address,
-      dateOfBirth:faculty.dateOfBirth,
-      gender:faculty.gender,
-      city:faculty.city,
-      accountTitle:faculty.accountTitle,
-      accountNumber:faculty.accountNumber,
-      bankName:faculty.bankName,
-      emergencyContact:faculty.emergencyContact,
-      emergencyPerson:faculty.emergencyPerson,
+      cnic: faculty.cnic,
+      address: faculty.address,
+      dateOfBirth: faculty.dateOfBirth,
+      gender: faculty.gender,
+      city: faculty.city,
+      accountTitle: faculty.accountTitle,
+      accountNumber: faculty.accountNumber,
+      bankName: faculty.bankName,
+      emergencyContact: faculty.emergencyContact,
+      emergencyPerson: faculty.emergencyPerson,
       salary: faculty.salary,
       image: faculty.profileImage,
       coursesAssigned: faculty.coursesAssigned,
+      userName: faculty.userName,
+      password: faculty.password,
     };
-        res.status(200).json(formatted);
-    } catch (error) {
-         console.error("Error in getFacultyById:", error.message);
-        res.status(500).json({
-            success:false,
-            message:"Error Fetching the Faculty Details",
-        })
-    }
-}
-
+    res.status(200).json(formatted);
+  } catch (error) {
+    console.error("Error in getFacultyById:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Error Fetching the Faculty Details",
+    });
+  }
+};
+// =========================================================
 export const updateFaculty = async (req, res) => {
   try {
     const { id } = req.params;
-
-    // ✅ Step 1: Check if ID exists
     const faculty = await Faculty.findById(id);
     if (!faculty) {
       return res.status(404).json({
@@ -340,7 +449,9 @@ export const updateFaculty = async (req, res) => {
       "emergencyPerson",
       "status",
       "coursesAssigned",
-      "profileImage"
+      "profileImage",
+      "userName",
+      "password",
     ];
 
     const filteredBody = {};
