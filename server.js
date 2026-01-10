@@ -21,8 +21,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({
     origin:[
-        'http://localhost:8000',
-        'https://backend-project-ums-vjpm.onrender.com'
+        "http://localhost:5173",
+        "https://studentteacherportal.vercel.app"
     ],
     methods:['GET', 'POST','PUT','DELETE','OPTIONS'],
     allowedHeaders:['Content-Type','Authorization'],
