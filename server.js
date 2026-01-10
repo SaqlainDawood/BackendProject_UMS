@@ -22,7 +22,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors({
     origin:[
         'http://localhost:8000',
-        'https://backend-project-ums-vjpm.onrender.com/'
+        'https://backend-project-ums-vjpm.onrender.com'
     ],
     methods:['GET', 'POST','PUT','DELETE','OPTIONS'],
     allowedHeaders:['Content-Type','Authorization'],
