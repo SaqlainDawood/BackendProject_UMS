@@ -18,8 +18,18 @@ const PORT = process.env.PORT || 8000;
 // Connect DB
 ConnectDB();
 app.use(express.json());
-app.use(cors());
- app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true }));
+app.use(cors({
+    origin:[
+        'http://localhost:8000',
+        'https://backend-project-ums-vjpm.onrender.com/'
+    ],
+    methods:['GET', 'POST','PUT','DELETE','OPTIONS'],
+    allowedHeaders:['Content-Type','Authorization'],
+    credentials:true,
+}));
+app.options('*' , cors());
+ 
 app.get('/' , (req , res)=>{
     res.send("Welcome to the express")
 })
