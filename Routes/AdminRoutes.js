@@ -9,7 +9,5 @@ router.post('/login' , adminLogin);
 router.get("/me", protectAdmin, getAdminProfile);
 router.put('/me' , protectAdmin , updateAdminProfile);
 
-
-
 export default router;
 

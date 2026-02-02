@@ -3,6 +3,8 @@ import User from "../../Models/userModel.js";
 import cloudinary from "../../Cloudinary/CloudConnect.js";
 import { sendCoordEmail } from "../../utils/CoorRegisterEmail.js";
 import bcrypt from "bcrypt";
+import mongoose from "mongoose";
+
 
 export const registerCoordinator = async (req, res) => {
   let user = null; // Track user for manual cleanup
@@ -331,4 +333,223 @@ export const sendCoordCredentials = async (req, res) => {
   }
 };
 
+export const getAllCoordinators = async (req,res)=>{
+    try {
+        const totalCoordinators = await Coordinator.countDocuments({
+          isDeleted:false,
+          status:'active'
+        });
+        
+        const department = await Coordinator.aggregate([
+          {$match:{
+            isDeleted:false,
+            status: 'active' 
+          }},
+          {$group:{
+            _id:"$department",
+            totalCoordinators:{$sum:1}
+          }},
+          {
+            $project:{
+              _id:0,
+              department:"$_id",
+              totalCoordinators:1
+            }
+          }
+        ])
+        const coordinators = await Coordinator.find({
+          isDeleted:false,
+          status:'active'
+      })
+        .populate("user" , "email role isActive lastLogin")
+        .sort({ createdAt: -1 });
+        res.status(200).json({
+          success:true,
+          data:{
+            coordinators,
+            total:totalCoordinators,
+            byDepartment:department,
+          }
+          
+        })
+    } catch (error) {
+      console.log("Error in fetching all coordinators",error);
+      res.status(500).json({
+        success:false,
+        message:"Failed to fetching all of the coordinators",
+        error:error.message,
+      })
+    }
+}
+
+export const viewCoordinator = async(req,res)=>{
+  try {
+    const {id} = req.params;
+    if(!mongoose.Types.ObjectId.isValid(id)){
+      return res.status(404).json({
+        success:false,
+        message:"Invalid Object Id......",
+      })
+    }
+    // console.log("Coordinator ID received:", req.params.id);
+    const coordinator = await Coordinator.findOne({
+      _id:id,
+      isDeleted:false
+    })
+    .populate("user","email role isActive lastLogin password"); 
+    if(!coordinator){
+      return res.status(404).json({
+        success:false,
+        message:`This coordinator ${id} is not found!!!!`,
+      })
+    }
+    res.status(201).json({
+        success:true,
+        message:"Coordinator Found Successfully",
+        data:coordinator,
+      })
+  } catch (error) {
+    console.log("Server Error for fetching the specific record of Coordinator......",error);
+    res.status(500).json({
+      success:false,
+      message:"Server error while fetching coordinator",
+    })
+  }
+};
+export const updateCoordinator = async(req,res)=>{
+  try {
+    const {id} = req.params;
+    if(!mongoose.Types.ObjectId.isValid(id)){
+      return res.status(400).json({
+        success:false,
+        message:"Invalid Coordinator ID",
+      })
+    }
+    const coordinator = await Coordinator.findOne({
+      _id:id,
+      isDeleted:false,
+    }).populate("user","email role isActive lastLogin");
+    if(!coordinator){
+      return res.status(404).json({
+        success:false,
+        message:"Coordinator Not found",
+      })
+    }
+    const { user, password, createdAt, createdBy, ...safeData} = req.body;
+    const coordUpdateData = await Coordinator.findOneAndUpdate({
+      _id:id,
+      isDeleted:false,
+    },
+    safeData,
+    {new:true, runValidators:true},
+  ).populate("user","email role isActive lastLogin");
+  if(!coordUpdateData){
+    return res.status(401).json({
+      success:false,
+      message:"Coordinator is not found!!!!",
+    })
+  }
+  if(user?.email){
+    await User.findOneAndUpdate(coordUpdateData.user._id, {
+      email:user.email,
+    })
+  }
+  if (password && password.trim() !== "") {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await User.findByIdAndUpdate(coordUpdateData.user._id, {
+        password: hashedPassword,
+      });
+    }
+   res.status(200).json({
+      success:true,
+      message:"Coordinator Updated Successfully",
+      data:coordUpdateData,
+    })
+  } catch (error) {
+    console.log(" Server Error for updating the coordinator",error);
+    res.status(500).json({
+      success:false,
+      message:"Server Error for updating the coordinator"||error.message,
+    })
+  }
+}
+// ========= Soft Delete =======
+// export const deleteCoordiantor = async(req,res)=>{
+//   try {
+//     const {id} = req.params;
+//       if(!mongoose.Types.ObjectId.isValid(id)){
+//         return res.status(400).json({
+//           success:false,
+//           message:"Invalid Coordinator ID",
+//         })
+//       }
+//       const coordinator = await Coordinator.findOne({
+//         _id:id,
+//         isDeleted:false,
+//       })
+//       if(!coordinator){
+//         return res.status(404).json({
+//           success:false,
+//           message:"Coordinator Not Found!!",
+//         });
+//       }
+//       coordinator.isDeleted = true,
+//       coordinator.status = "inactive",
+//       await coordinator.save();
+//       await User.findByIdAndUpdate(
+//         coordinator.user,
+//         {
+//           isDeleted:true,
+//           isActive:false,
+//         },
+//         {new:true}
+//       )
+//       return res.status(200).json({
+//         success:true,
+//         message:"Coordinator and user account Deleted Successfully ",
+//       })
+//   } catch (error) {
+//     console.log("Delete Error for coordinator",error);
+//     res.status(500).json({
+//       success:false,
+//       message:"Server Error for Deletion Coordiantor" || error.message,
+//     })
+//   }
+// }
+export const deleteCoordPermanently = async(req,res)=>{
+  try {
+    const {id} = req.params;
+    if(!mongoose.Types.ObjectId.isValid(id)){
+      return res.status(400).json({
+        success:false,
+        message:"Invalid Coordinator ID",
+      })
+    }
+    const coordinator = await Coordinator.findById(id);
+    if(!coordinator){
+      return res.status(401).json({
+        success:false,
+        message:"Coordinator not found!!"|| error.message,
+      })
+    }
+    if(coordinator.profileImage?.public_id){
+      await cloudinary.uploader.destroy(coordinator.profileImage?.public_id)
+    }
+    if(coordinator.degreeCertificate?.public_id){
+      await cloudinary.uploader.destroy(coordinator.degreeCertificate?.public_id);
+    }
+    await User.findByIdAndDelete(coordinator.user);
+    await Coordinator.findByIdAndDelete(id);
+    res.status(200).json({
+      success:true,
+      message:"Coordinator Deleted Successfully",
+    })
+  } catch (error) {
+    console.log("Delete Coordinator Error",error);
+    res.status(500).json({
+      success:false,
+      message:"Server Error For Deletion Coordinator"||error.message,
+    })
+  }
+}
 

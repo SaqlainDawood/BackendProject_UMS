@@ -10,7 +10,7 @@ export const StudentView = async (req, res) => {
         message: "Invalid Student ID format",
       });
     }
-    console.log("Student ID Receive:", req.params.id);
+    // console.log("Student ID Receive:", req.params.id);
     const student = await Student.findById(req.params.id).populate(
       "user",
       "email"
@@ -52,8 +52,8 @@ export const StduentUpdate = async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
-    console.log("Update Student with ID :", id);
-    console.log("Update Data :", updateData);
+    // console.log("Update Student with ID :", id);
+    // console.log("Update Data :", updateData);
     if (!id) {
       return res.status(400).json({
         success: false,
@@ -116,7 +116,7 @@ export const StduentUpdate = async (req, res) => {
 };
 
 export const StudentDeleteById = async (req, res) => {
-  console.log("Delete Request Student ID is:", req.params.id);
+  // console.log("Delete Request Student ID is:", req.params.id);
 
   try {
     const { id } = req.params;

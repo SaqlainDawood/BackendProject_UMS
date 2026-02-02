@@ -10,7 +10,7 @@ export const getTotalStudents = async (req, res) => {
     const pendingApprovals = await Student.countDocuments({
       status: "pending",
     });
-    res.status(200).json({
+   return res.status(200).json({
       success: true,
       totalStudents,
       totalFaculty,
@@ -85,10 +85,10 @@ export const approveStudents = async (req, res) => {
       });
     }
     
-    console.log("📋 Original Student Object:", JSON.stringify(student, null, 2));
-    console.log("📋 Student keys:", Object.keys(student));
-    console.log("📋 Has studentName?", "studentName" in student);
-    console.log("📋 student.studentName value:", student.studentName);
+    console.log(" Original Student Object:", JSON.stringify(student, null, 2));
+    console.log(" Student keys:", Object.keys(student));
+    console.log(" Has studentName?", "studentName" in student);
+    console.log(" student.studentName value:", student.studentName);
     
     // Extract email
     const email = student.email || (student.user && student.user.email);
@@ -105,12 +105,12 @@ export const approveStudents = async (req, res) => {
       user: student.user
     };
     
-    console.log("📋 Prepared studentDataForEmail:", JSON.stringify(studentDataForEmail, null, 2));
+    console.log(" Prepared studentDataForEmail:", JSON.stringify(studentDataForEmail, null, 2));
     
-    console.log("📧 Final Email To Send:", email);
+    console.log(" Final Email To Send:", email);
 
     if (!email) {
-      console.log("⚠ No email found in student object!");
+      console.log(" No email found in student object!");
     } else {
       try {
         await sendApprovalEmail(studentDataForEmail);

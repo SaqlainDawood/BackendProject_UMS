@@ -70,7 +70,7 @@ const StudentSchema = new mongoose.Schema({
   nationality: { type: String, required: true },
   status: {
     type: String,
-    enum: ["pending", "Approved", "unassigned", "assign", "rejected", "Active","Suspend",],
+    enum: ["pending", "approved", "unassigned", "assign", "rejected", "active","suspend",],
     default: "pending",
   },
   rejectionReason: { type: String, default: null },

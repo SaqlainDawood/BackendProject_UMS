@@ -16,19 +16,19 @@ export const getAllStudentList = async (req, res) => {
     });
 
     const allowedStatuses = [
-      "approved",
       "unassigned",
       "assign",
       "rejected",
       "Active",
       "Suspend",
+      "approved",
     ];
 
     const students = await Student.find({
       status: { $in: allowedStatuses },
     })
       .populate("user", "email")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 }); 
 
     // FIXED CONDITION
     if (!students || students.length === 0) {
@@ -38,8 +38,8 @@ export const getAllStudentList = async (req, res) => {
       });
     }
 
-    console.log("✅ Filtered students count:", students.length);
-    console.log("✅ Allowed statuses:", allowedStatuses);
+    console.log(" Filtered students count:", students.length);
+    console.log(" Allowed statuses:", allowedStatuses);
 
     students.forEach((student, index) => {
       console.log(

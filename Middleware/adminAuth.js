@@ -40,16 +40,6 @@ export const protectAdmin = async (req, res, next) => {
       }
       req.user = user;
       req.admin = admin;
-      // req.admin = await Admin.findById(decoded.id).select("-password");
-
-      // if (!req.admin) {
-      //   return res.status(401).json({ success: false, message: "Admin not found" });
-      // }
-
-      // if (req.admin.role !== "admin") {
-      //   return res.status(403).json({ success: false, message: "Access denied: Not an admin" });
-      // }
-
       next();
     } catch (error) {
       console.log("JWT Verification Error!!", error.message);

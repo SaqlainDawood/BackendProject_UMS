@@ -364,7 +364,7 @@ export const getFacultyById = async (req, res) => {
         message: "Invalid faculty ID format",
       });
     }
-    console.log("Faculty ID received:", req.params.id);
+    // console.log("Faculty ID received:", req.params.id);
     const faculty = await Faculty.findById(req.params.id).populate(
       "user",
       "email"
@@ -414,6 +414,7 @@ export const getFacultyById = async (req, res) => {
   }
 };
 // =========================================================
+
 export const updateFaculty = async (req, res) => {
   try {
     const { id } = req.params;
@@ -425,7 +426,7 @@ export const updateFaculty = async (req, res) => {
       });
     }
 
-    // ✅ Step 2: Remove unallowed fields from req.body
+    
     const allowedFields = [
       "employeeID",
       "name",

@@ -231,7 +231,7 @@ const coordinatorSchema = new mongoose.Schema({
     default: false
   }
 }, {
-  timestamps: true // Automatically adds createdAt and updatedAt
+  timestamps: true 
 });
 
 // ========== ESSENTIAL MIDDLEWARE ==========
