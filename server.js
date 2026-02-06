@@ -25,7 +25,7 @@ app.use(cors({
         "http://localhost:5174",
         "http://localhost:5175",
         "http://localhost:5176",
-        "https://studentteacherportal.vercel.app"
+        "https://student-teacher-portal-ums.vercel.app/"
     ],
     methods:['GET', 'POST','PUT','DELETE','OPTIONS'],
     allowedHeaders:['Content-Type','Authorization'],
