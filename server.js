@@ -21,11 +21,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({
     origin:[
+         "https://student-teacher-portal-ums.vercel.app",
         "http://localhost:5173",
         "http://localhost:5174",
         "http://localhost:5175",
         "http://localhost:5176",
-        "https://student-teacher-portal-ums.vercel.app/"
     ],
     methods:['GET', 'POST','PUT','DELETE','OPTIONS'],
     allowedHeaders:['Content-Type','Authorization'],
