@@ -44,7 +44,7 @@ app.use('/api/admin/stats' , AdminStatistics);
 // Admin Register Coordinator
 app.use('/api/admin/coordinator' , AdminCoordinator)
 // Admin Side Faculty.
-app.use('/api/faculty' , FacultyRoutes)
+app.use('/api/admin/faculty' , FacultyRoutes);
 // Faculty Portal Side Routes
 app.use('/api/faculty/portal' , FacultyPortal);
 // Student

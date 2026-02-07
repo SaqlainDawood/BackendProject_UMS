@@ -5,7 +5,7 @@ import {uploadFacultyImage} from '../Middleware/Multer.js'
 const router = express.Router();
 
 // Admin side Routes
-router.post('/add',uploadFacultyImage.single("profileImage"),  facultyAdd);
+router.post('/add',uploadFacultyImage.single("profileImage"), facultyAdd);
 router.get('/all', getAllFaculties);
 router.delete('/:id' , deleteFaculty);
 router.put('/update/:id' , updateFaculty);
