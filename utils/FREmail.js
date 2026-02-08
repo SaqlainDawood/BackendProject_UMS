@@ -1,5 +1,7 @@
 import nodemailer from "nodemailer";
-
+console.log("📧 Starting email send process...");
+  console.log("EMAIL_USER exists:", !!process.env.EMAIL_USER);
+  console.log("Email recipient:", data.to);
 export const sendFacultyEmail = async (data) => {
   const {
     to,
@@ -12,16 +14,19 @@ export const sendFacultyEmail = async (data) => {
     joiningDate
   } = data;
 
-  const transporter = nodemailer.createTransport({ 
-    service: "gmail",
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
+  const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+  tls: {
+    rejectUnauthorized: false
+  }
+});
 
   // Login Link
-  const loginURL = "http://localhost:8000/faculty/login";
+  const loginURL = process.env.Front_End_URL+'/faculty/login';
 
   const htmlTemplate = `
     <!DOCTYPE html>
