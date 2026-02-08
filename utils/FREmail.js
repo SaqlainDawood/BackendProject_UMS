@@ -12,9 +12,10 @@ export const sendFacultyEmail = async (data) => {
     joiningDate
   } = data;
 
-console.log("📧 Starting email send process...");
-console.log("EMAIL_USER exists:", !!process.env.EMAIL_USER);
-console.log("Email recipient:", data.to);
+  console.log("📧 Starting email send process...");
+  console.log("EMAIL_USER:", process.env.EMAIL_USER);
+  console.log("EMAIL_PASS length:", process.env.EMAIL_PASS?.length);
+  console.log("Email recipient:", to);
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -27,7 +28,7 @@ await transporter.verify();
 console.log("✅ Gmail SMTP connected successfully");
 
   // Login Link
-  const loginURL = process.env.Front_End_URL+'admin/dashboard/faculty/login';
+  const loginURL = process.env.Front_END_URL+'admin/dashboard/faculty/login';
 
   const htmlTemplate = `
     <!DOCTYPE html>
