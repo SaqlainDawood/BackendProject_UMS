@@ -1,7 +1,5 @@
 import nodemailer from "nodemailer";
-console.log("📧 Starting email send process...");
-  console.log("EMAIL_USER exists:", !!process.env.EMAIL_USER);
-  console.log("Email recipient:", data.to);
+
 export const sendFacultyEmail = async (data) => {
   const {
     to,
@@ -13,7 +11,9 @@ export const sendFacultyEmail = async (data) => {
     password,
     joiningDate
   } = data;
-
+console.log("📧 Starting email send process...");
+console.log("EMAIL_USER exists:", !!process.env.EMAIL_USER);
+console.log("Email recipient:", data.to);
   const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
