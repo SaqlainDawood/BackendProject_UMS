@@ -281,12 +281,12 @@ export const sendFacultyCredentials = async (req, res) => {
       message: "Faculty credentials email sent successfully!",
     });
   } catch (error) {
-    console.log("Email sending error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to send email",
-    });
-  }
+  console.error("Email sending error:", error);
+  res.status(500).json({
+    success: false,
+    message: error.message,
+  });
+}
 };
 // =======================================================
 export const getAllFaculties = async (req, res) => {
