@@ -28,7 +28,7 @@ console.log("Email recipient:", data.to);
 });
 
   // Login Link
-  const loginURL = process.env.Front_End_URL+'/faculty/login';
+  const loginURL = process.env.Front_End_URL+'admin/dashboard/faculty/login';
 
   const htmlTemplate = `
     <!DOCTYPE html>
