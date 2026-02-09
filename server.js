@@ -21,7 +21,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({
     origin:[
-         "https://student-teacher-portal-ums.vercel.app",
+         "https://studentteacherportal.vercel.app",
           "https://admin-pannel-black.vercel.app",
         "http://localhost:5173",
         "http://localhost:5174",
