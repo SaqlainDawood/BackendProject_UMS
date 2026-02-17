@@ -425,8 +425,6 @@ export const updateFaculty = async (req, res) => {
         message: "Faculty not found...",
       });
     }
-
-    
     const allowedFields = [
       "employeeID",
       "name",
@@ -462,7 +460,6 @@ export const updateFaculty = async (req, res) => {
       }
     }
 
-    // ✅ Step 3: Update record safely
     const updatedFaculty = await Faculty.findByIdAndUpdate(id, filteredBody, {
       new: true,
       runValidators: true,

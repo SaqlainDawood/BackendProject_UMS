@@ -9,6 +9,7 @@ import AdminRoutes from './Routes/AdminRoutes.js'
 import AdminStatistics from './Routes/AdminStats/AdminStats.js'
 import AdminStudentVUD from './Routes/AdminStats/StudentVUD.js'
 import AdminCoordinator from './Routes/AdminCoordinator/RegisterCoordinator.js'
+import classRoute from './Routes/AdminAttendance/AdminAttendance.js'
 dotenv.config();
 
 const app = express();
@@ -17,8 +18,6 @@ const PORT = process.env.PORT || 8000;
 
 // Connect DB
 ConnectDB();
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 app.use(cors({
     origin:[
          "https://studentteacherportal-j7yl2fvuj-saqlain-dawoods-projects.vercel.app",
@@ -34,7 +33,11 @@ app.use(cors({
     allowedHeaders:['Content-Type','Authorization'],
     credentials:true,
 }));
- 
+ app.options('*', cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+
 app.get('/' , (req , res)=>{
     res.send("Welcome to the express")
 })
@@ -51,7 +54,8 @@ app.use('/api/admin/faculty' , FacultyRoutes);
 app.use('/api/faculty/portal' , FacultyPortal);
 // Student
 app.use('/api/students' , StudentRoutes);
-
+// Attendance system for admin side
+app.use('/api/classes', classRoute)
 app.listen(PORT,()=>{
     console.log(`Server is Started at http://localhost:${PORT}`)
 })
