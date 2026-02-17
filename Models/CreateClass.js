@@ -11,7 +11,7 @@ const classSchema = new mongoose.Schema({
     },
     semester:{
         type:Number,
-        requreid:true,
+        required:true,
     },
     teacher:{
         type:mongoose.Schema.Types.ObjectId,
