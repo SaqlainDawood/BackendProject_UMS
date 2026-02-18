@@ -9,7 +9,6 @@ export const createClass = async (req, res) => {
         message: "Missing required fields",
       });
     }
-
     const existTeacher = await Teacher.findById(teacher);
     if (!existTeacher) {
       return res.status(404).json({

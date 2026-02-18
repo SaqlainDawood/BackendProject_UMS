@@ -9,7 +9,7 @@ import AdminRoutes from './Routes/AdminRoutes.js'
 import AdminStatistics from './Routes/AdminStats/AdminStats.js'
 import AdminStudentVUD from './Routes/AdminStats/StudentVUD.js'
 import AdminCoordinator from './Routes/AdminCoordinator/RegisterCoordinator.js'
-import classRoute from './Routes/AdminAttendance/AdminAttendance.js'
+import classRoute from './Routes/AdminClassRoutes/AdminClassesCRUD.js'
 dotenv.config();
 
 const app = express();

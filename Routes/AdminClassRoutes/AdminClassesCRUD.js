@@ -5,7 +5,7 @@ import {
   getAllClasses,
   getSingleClass,
   updateClass,
-} from "../../Controllers/Admin/AdminAttendance/CreateClass.js";
+} from "../../Controllers/Admin/AdminClassCRUD/AdminClassCRUD.js";
 
 const router = express.Router();
 router.get("/all", getAllClasses);
