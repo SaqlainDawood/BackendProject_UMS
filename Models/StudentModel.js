@@ -113,12 +113,6 @@ const StudentSchema = new mongoose.Schema({
     photo: { type: Boolean, default: true },
     domicile: { type: Boolean, default: true },
   },
-  // password: { type: String, default: null },
-  // role:{
-  //   type:String,
-  //   default:"student",
-  // },
-
   createdAt: { type: Date, default: Date.now },
 });
 

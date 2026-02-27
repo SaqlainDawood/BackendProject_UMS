@@ -1,41 +1,105 @@
 import Teacher from "../../../Models/TeacherModel.js";
 import Class from "../../../Models/CreateClass.js";
+import mongoose from 'mongoose'
 export const createClass = async (req, res) => {
-  try {
-    const { className, semester, department, teacher, students } = req.body;
-    if (!className || !department || !semester || !teacher) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing required fields",
-      });
-    }
-    const existTeacher = await Teacher.findById(teacher);
-    if (!existTeacher) {
-      return res.status(404).json({
-        success: false,
-        message: "Teacher Not Found!!!",
-      });
-    }
-    const newClass = await Class.create({
+  const session = await mongoose.startSession();
+  session.startTransaction();
+ try{
+    const {
       className,
-      semester,
+      classCode,
       department,
-      teacher,
-      students,
-    });
-    console.log("Create New Class", newClass);
+      semester,
+      section ,
+      subject ,
+      creditHours,
+      teachers,
+      capacity,
+      schedule,
+      students
+    } = req.body;
+    if(!className || !classCode || !department
+       || !semester || !section ||!subject
+        || !creditHours ||!teachers ||!schedule || !students){
+      return res.status(400).json({
+        success:false,
+        message:"Missing Required Fields"
+      })
+    }
+    if(semester < 1 || semester > 8){
+      throw new Error("Semester must between 1 and 8");
+    }
+    if(capacity && (capacity < 1 || capacity > 70)){
+      throw new Error("Capacity must between 1 and 70");
+    }
 
-    res.status(201).json({
-      success: true,
-      message: "Class created successfully",
-      data: newClass,
-    });
-  } catch (error) {
-    console.log("Error For creating Class", error);
-    res.status(500).json({
+      const existingClass = await Class.findOne({classCode}).session(session);
+      if(existingClass){
+         throw new Error("Class code already exists");
+      }
+
+      const validateTeachers = [];
+      if(teachers && teachers.length > 0){
+        const teacherId = new Set();
+        for(let t of teachers){
+          if(!mongoose.Types.ObjectId.isValid(t.teacher)){
+            throw new Error(`Invalide Teacher ID :${t.teacher}`);
+          }
+          if(teacherId.has(t.teacher)){
+            throw new Error("Duplicate teacher assign"); 
+          }
+          teacherId.add(t.teacher);
+          const teacherExist = await Teacher.findById(t.teacher).session(session);
+          if(!teacherExist){
+            throw new Error(`Teacher not found${t.teacher}`);
+          }
+          validateTeachers.push({
+            teacher:t.teacher,
+            role:t.role
+          })
+        }
+      }
+      if(!schedule || schedule.length === 0){
+        throw new Error("Schedule required");
+        }
+        for(let s of schedule){
+          if( !s.day || !s.startTime || !s.endTime || !s.room){
+              throw new Error("Please Enter completely Schedule Data");
+          }
+        }
+        
+      const newClassData = {
+          className,
+          classCode,
+          semester,
+          subject,
+          department,
+          section,
+          creditHours,
+          teachers:validateTeachers,
+          capacity,
+          schedule,
+          students
+      }
+      const newClass = await Class.create([newClassData], {session});
+      await session.commitTransaction();
+      session.endSession();
+      const populatedClass = await Class.findById(newClass[0]._id)
+      .populate('teachers.teacher', 'firstName lastName email employeeID')
+      .populate('students.student', 'firstName lastName rollNo registrationNo');
+      return res.status(201).json({
+          success:true,
+          message:"Class Created Successfully",
+          data:newClass[0]
+      })
+     
+ } catch (error) {
+  console.log("Error for creating class",error);
+  await session.abortTransaction();
+  session.endSession();
+   res.status(500).json({
       success: false,
-      message: "Class creation failed",
-      error: error.message,
+      message:error.message
     });
   }
 };
@@ -43,7 +107,7 @@ export const createClass = async (req, res) => {
 export const getAllClasses = async (req, res) => {
   try {
     const classes = await Class.find({ isActive: true })
-      .populate("teacher", "name email")
+      .populate("teachers", "name email")
       .populate("students", "name rollNo");
     console.log("Data = ", classes);
     res.status(201).json({
