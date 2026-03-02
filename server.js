@@ -21,9 +21,7 @@ ConnectDB();
 app.use(cors({
     origin:[
          "https://studentteacherportal-j7yl2fvuj-saqlain-dawoods-projects.vercel.app",
-           /\.vercel\.app$/,
           "https://admin-pannel-black.vercel.app",
-         
         "http://localhost:5173",
         "http://localhost:5174",
         "http://localhost:5175",
@@ -55,7 +53,7 @@ app.use('/api/faculty/portal' , FacultyPortal);
 // Student
 app.use('/api/students' , StudentRoutes);
 // Attendance system for admin side
-app.use('/api/classes', classRoute)
+app.use('/api/admin/classes', classRoute)
 app.listen(PORT,()=>{
     console.log(`Server is Started at http://localhost:${PORT}`)
 })
