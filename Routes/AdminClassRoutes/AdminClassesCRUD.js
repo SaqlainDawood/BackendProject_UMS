@@ -13,6 +13,7 @@ router.get("/all", getAllClasses);
 router.get("/faculty/:teacherId/schedule", getTeacherSchedule);
 router.post("/create", checkTeacherSchedule, createClass);
 router.get("/:id", getSingleClass);
+
 // router.put("/:id", updateClass);
 // router.delete("/:id", deleteClass);
 

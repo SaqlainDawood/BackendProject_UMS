@@ -1,4 +1,4 @@
-import CreateClass from "../Models/CreateClass";
+import CreateClass from "../Models/CreateClass.js";
 
 
 export const checkTeacherSchedule = async(req,res,next)=>{
