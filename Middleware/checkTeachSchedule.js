@@ -1,6 +1,5 @@
 import CreateClass from "../Models/CreateClass.js";
 
-
 export const checkTeacherSchedule = async(req,res,next)=>{
     try {
         const {teacherId , day , startTime} = req.body;
