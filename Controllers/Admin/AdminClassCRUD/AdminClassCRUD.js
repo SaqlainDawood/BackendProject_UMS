@@ -114,6 +114,7 @@ export const getAllClasses = async (req, res) => {
       success: true,
       message: "Fetch All classes Successfully",
       data: classes,
+      
     });
   } catch (error) {
     console.log("Error Fetching all classes", error);
@@ -129,7 +130,7 @@ export const getSingleClass = async (req, res) => {
     const { id } = req.params;
     console.log("Get Single Class", id);
     const singleClass = await Class.findById(id)
-      .populate("teacher")
+      .populate("teachers" ,"name email")
       .populate("students");
     if (!singleClass) {
       return res.status(404).json({
