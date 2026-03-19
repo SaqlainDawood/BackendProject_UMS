@@ -110,7 +110,7 @@ export const getAllClasses = async (req, res) => {
       .populate({
         path: 'teachers.teacher',
         model: 'Faculty', 
-        select: 'name email employeeID designation' 
+        select: 'firstName lastName email employeeID designation' 
       })
       .populate("students", "name rollNo");
     console.log("Data = ", classes);
