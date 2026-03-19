@@ -107,7 +107,11 @@ export const createClass = async (req, res) => {
 export const getAllClasses = async (req, res) => {
   try {
     const classes = await Class.find({ isActive: true })
-      .populate("teachers", "name email")
+      .populate({
+        path: 'teachers.teacher',
+        model: 'Faculty', 
+        select: 'name email employeeID designation' 
+      })
       .populate("students", "name rollNo");
     console.log("Data = ", classes);
     res.status(201).json({
