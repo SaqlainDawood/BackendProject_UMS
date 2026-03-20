@@ -132,7 +132,13 @@ export const getAllClasses = async (req, res) => {
 export const getSingleClass = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log("Get Single Class", id);
+    console.log("Get Single Class", id);    
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid class ID format"
+      });
+    }
     const singleClass = await Class.findById(id)
        .populate({
         path: 'teachers.teacher',
