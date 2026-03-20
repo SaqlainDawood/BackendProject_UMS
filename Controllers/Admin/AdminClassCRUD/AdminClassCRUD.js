@@ -134,7 +134,11 @@ export const getSingleClass = async (req, res) => {
     const { id } = req.params;
     console.log("Get Single Class", id);
     const singleClass = await Class.findById(id)
-      .populate("teachers" ,"name email")
+       .populate({
+        path: 'teachers.teacher',
+        model: 'Faculty', 
+        select: 'firstName lastName email employeeID designation' 
+      })
       .populate("students");
     if (!singleClass) {
       return res.status(404).json({
@@ -155,3 +159,4 @@ export const getSingleClass = async (req, res) => {
     });
   }
 };
+
