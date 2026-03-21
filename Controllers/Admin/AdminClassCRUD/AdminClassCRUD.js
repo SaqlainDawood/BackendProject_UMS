@@ -1,6 +1,6 @@
 import Teacher from "../../../Models/TeacherModel.js";
 import Class from "../../../Models/CreateClass.js";
-import mongoose from 'mongoose'
+import mongoose, { model } from 'mongoose'
 export const createClass = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -144,7 +144,7 @@ export const getSingleClass = async (req, res) => {
         path: 'teachers.teacher',
         model: 'Faculty',
         populate: {
-          path: 'user',  // Populate the user to get email
+          path: 'user',
           model: 'User',
           select: 'email'
         },
@@ -306,6 +306,109 @@ export const updateClass = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to update class"
+    });
+  }
+};
+
+export const deleteClass = async(req,res)=>{
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const {id} = req.params;
+    if(!mongoose.Types.ObjectId.isValid(id)){
+      return res.status(404).json({
+        success:false,
+        message:"MongoDB ID is invalid...."
+      })
+    }
+    const existingClass = await Class.findById(id).session(session);
+    if(!existingClass){
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({
+        success:false,
+        message:"Class not found",
+      })
+    }
+    const deletedClass = await Class.findByIdAndUpdate(
+      id,
+      {isActive:true},
+      {new:true , session}
+    ).populate({
+        path:'teachers.teacher',
+        model:'Faculty',
+        select:'firstName lastName email'
+      })
+      await session.commitTransaction();
+    session.endSession();
+    return res.status(200).json({
+      success: true,
+      message: "Class deactivated successfully",
+      data: deletedClass
+    });
+
+  } catch (error) {
+    console.error("Error deactivating class:", error);
+    await session.abortTransaction();
+    session.endSession();
+    
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to deactivate class"
+    });
+  }
+}
+export const reactivateClass = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { id } = req.params;
+    
+    // Validate class ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid class ID format"
+      });
+    }
+
+    // Find the class
+    const existingClass = await Class.findById(id).session(session);
+    
+    if (!existingClass) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({
+        success: false,
+        message: "Class not found"
+      });
+    }
+
+    // Reactivate the class
+    const reactivatedClass = await Class.findByIdAndUpdate(
+      id,
+      { isActive: true },
+      { new: true, session }
+    );
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return res.status(200).json({
+      success: true,
+      message: "Class reactivated successfully",
+      data: reactivatedClass
+    });
+
+  } catch (error) {
+    console.error("Error reactivating class:", error);
+    await session.abortTransaction();
+    session.endSession();
+    
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to reactivate class"
     });
   }
 };

@@ -3,8 +3,9 @@ import {
   createClass,
   getAllClasses,
   getSingleClass,
-  updateClass
-
+  updateClass,
+  deleteClass,          
+  reactivateClass  
 } from "../../Controllers/Admin/AdminClassCRUD/AdminClassCRUD.js";
 import { getTeacherSchedule } from "../../Controllers/Admin/TeacherSchedule/TecherSchedule.js";
 import { checkTeacherSchedule } from "../../Middleware/checkTeachSchedule.js";
@@ -14,7 +15,11 @@ router.get("/all", getAllClasses);
 router.get("/faculty/:teacherId/schedule", getTeacherSchedule);
 router.post("/create", checkTeacherSchedule, createClass);
 router.get("/:id", getSingleClass);
-router.put('/update/:id', updateClass)
+router.put('/update/:id', updateClass);
+router.delete('/:id/delete',deleteClass);
+router.delete('/:id/permenantly-delete',reactivateClass);
+router.patch('/:id/reactive',reactivateClass);
+
 
 // router.put("/:id", updateClass);
 // router.delete("/:id", deleteClass);
