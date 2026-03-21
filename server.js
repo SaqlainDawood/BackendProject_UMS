@@ -21,6 +21,7 @@ ConnectDB();
 app.use(cors({
     origin:[
          "https://studentteacherportal-j7yl2fvuj-saqlain-dawoods-projects.vercel.app",
+         'https://studentteacherportal.vercel.app',
           "https://admin-pannel-black.vercel.app",
             "http://localhost:5173",
             "http://localhost:5174",
