@@ -332,7 +332,7 @@ export const deleteClass = async(req,res)=>{
     }
     const deletedClass = await Class.findByIdAndUpdate(
       id,
-      {isActive:true},
+      {isActive:false},
       {new:true , session}
     ).populate({
         path:'teachers.teacher',
