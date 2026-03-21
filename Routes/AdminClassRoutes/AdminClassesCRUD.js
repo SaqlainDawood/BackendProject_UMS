@@ -3,6 +3,7 @@ import {
   createClass,
   getAllClasses,
   getSingleClass,
+  updateClass
 
 } from "../../Controllers/Admin/AdminClassCRUD/AdminClassCRUD.js";
 import { getTeacherSchedule } from "../../Controllers/Admin/TeacherSchedule/TecherSchedule.js";
@@ -13,6 +14,7 @@ router.get("/all", getAllClasses);
 router.get("/faculty/:teacherId/schedule", getTeacherSchedule);
 router.post("/create", checkTeacherSchedule, createClass);
 router.get("/:id", getSingleClass);
+router.put('/update/:id', updateClass)
 
 // router.put("/:id", updateClass);
 // router.delete("/:id", deleteClass);

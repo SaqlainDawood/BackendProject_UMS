@@ -140,12 +140,21 @@ export const getSingleClass = async (req, res) => {
       });
     }
     const singleClass = await Class.findById(id)
-       .populate({
+      .populate({
         path: 'teachers.teacher',
-        model: 'Faculty', 
-        select: 'firstName lastName email employeeID designation' 
+        model: 'Faculty',
+        populate: {
+          path: 'user',  // Populate the user to get email
+          model: 'User',
+          select: 'email'
+        },
+        select: 'firstName lastName employeeID designation user'
       })
-      .populate("students");
+       .populate({
+        path: 'students.student',
+        model: 'Student',
+        select: 'firstName lastName rollNo registrationNo'
+      });
     if (!singleClass) {
       return res.status(404).json({
         success: false,
@@ -165,4 +174,138 @@ export const getSingleClass = async (req, res) => {
     });
   }
 };
+export const updateClass = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
+  try {
+    const { id } = req.params;
+    
+    // Validate class ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid class ID format"
+      });
+    }
+
+    const {
+      className,
+      classCode,
+      department,
+      semester,
+      section,
+      subject,
+      creditHours,
+      capacity,
+      teachers,
+      schedule,
+      isActive,
+      academicYear
+    } = req.body;
+
+    // Find the class first
+    const existingClass = await Class.findById(id).session(session);
+    
+    if (!existingClass) {
+      return res.status(404).json({
+        success: false,
+        message: "Class not found"
+      });
+    }
+
+    // Check if classCode is being changed and if it already exists
+    if (classCode && classCode !== existingClass.classCode) {
+      const classWithSameCode = await Class.findOne({ 
+        classCode, 
+        _id: { $ne: id } 
+      }).session(session);
+      
+      if (classWithSameCode) {
+        throw new Error("Class code already exists");
+      }
+    }
+
+    // Validate teachers if provided
+    let validatedTeachers = existingClass.teachers; // Keep existing if not updating
+    if (teachers && teachers.length > 0) {
+      validatedTeachers = [];
+      const teacherIds = new Set();
+      
+      for (let t of teachers) {
+        if (!mongoose.Types.ObjectId.isValid(t.teacher)) {
+          throw new Error(`Invalid Teacher ID: ${t.teacher}`);
+        }
+        
+        if (teacherIds.has(t.teacher.toString())) {
+          throw new Error("Duplicate teacher assignment");
+        }
+        
+        teacherIds.add(t.teacher.toString());
+        
+        const teacherExists = await Teacher.findById(t.teacher).session(session);
+        if (!teacherExists) {
+          throw new Error(`Teacher not found: ${t.teacher}`);
+        }
+        
+        validatedTeachers.push({
+          teacher: t.teacher,
+          role: t.role || "Lecturer",
+          assignedDate: t.assignedDate || new Date()
+        });
+      }
+    }
+
+    // Validate schedule if provided
+    if (schedule && schedule.length > 0) {
+      for (let s of schedule) {
+        if (!s.day || !s.startTime || !s.endTime || !s.room) {
+          throw new Error("Please complete all schedule fields");
+        }
+      }
+    }
+
+    // Prepare update data
+    const updateData = {
+      ...(className && { className }),
+      ...(classCode && { classCode }),
+      ...(department && { department }),
+      ...(semester && { semester: parseInt(semester) }),
+      ...(section && { section }),
+      ...(subject && { subject }),
+      ...(creditHours && { creditHours: parseInt(creditHours) }),
+      ...(capacity && { capacity: parseInt(capacity) }),
+      ...(academicYear && { academicYear }),
+      ...(isActive !== undefined && { isActive }),
+      ...(validatedTeachers && { teachers: validatedTeachers }),
+      ...(schedule && { schedule })
+    };
+
+    // Update the class
+    const updatedClass = await Class.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, session, runValidators: true }
+    ).populate('teachers.teacher', 'firstName lastName email employeeID')
+     .populate('students.student', 'name rollNo');
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return res.status(200).json({
+      success: true,
+      message: "Class updated successfully",
+      data: updatedClass
+    });
+
+  } catch (error) {
+    console.error("Error updating class:", error);
+    await session.abortTransaction();
+    session.endSession();
+    
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update class"
+    });
+  }
+};
