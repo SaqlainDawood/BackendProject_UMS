@@ -20,8 +20,4 @@ router.delete('/:id/delete',deleteClass);
 router.delete('/:id/permenantly-delete',reactivateClass);
 router.patch('/:id/reactive',reactivateClass);
 
-
-// router.put("/:id", updateClass);
-// router.delete("/:id", deleteClass);
-
 export default router;
