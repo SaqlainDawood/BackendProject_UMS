@@ -1,6 +1,7 @@
 import User from "../../Models/userModel.js";
 import Faculty from "../../Models/TeacherModel.js";
 import Class from '../../Models/CreateClass.js';
+import mongoose from 'mongoose'
 export const fetchFacultyProfile = async (req, res) => {
   try {
     const faculty = await Faculty.findById(req.faculty._id).populate(
