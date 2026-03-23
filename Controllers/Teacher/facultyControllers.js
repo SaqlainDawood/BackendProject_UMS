@@ -1,4 +1,5 @@
 import Faculty from "../../Models/TeacherModel.js";
+import Class from "../../Models/CreateClass.js";
 import User from "../../Models/userModel.js";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
@@ -148,34 +149,32 @@ export const facultyAdd = async (req, res) => {
       });
     }
     let user;
-    if(!existingUser){
+    if (!existingUser) {
       const salt = await bcrypt.genSalt(10);
-      const hashPassword = await bcrypt.hash(password , salt);
+      const hashPassword = await bcrypt.hash(password, salt);
       user = await User.create({
-        email:normalizeEmail,
-        password:hashPassword,
-        role:'faculty',
+        email: normalizeEmail,
+        password: hashPassword,
+        role: "faculty",
         isActive: true,
         lastLogin: new Date(),
-      })
-    }
-    else{
-      if(existingUser.role === 'faculty'){
+      });
+    } else {
+      if (existingUser.role === "faculty") {
         return res.status(400).json({
-          success:false,
-          message:'User already exist with this email',
-        })
+          success: false,
+          message: "User already exist with this email",
+        });
       }
-      existingUser.role === 'faculty';
-      if(!existingUser.password){
-         const salt = await bcrypt.genSalt(10);
+      existingUser.role === "faculty";
+      if (!existingUser.password) {
+        const salt = await bcrypt.genSalt(10);
         existingUser.password = await bcrypt.hash(password, salt);
-    
       }
-         await existingUser.save();
-         user = existingUser;
+      await existingUser.save();
+      user = existingUser;
     }
-    
+
     // let user = await User.findOne({ email: normalizeEmail });
     // if (!user) {
     //   const salt = await bcrypt.genSalt(10);
@@ -281,12 +280,12 @@ export const sendFacultyCredentials = async (req, res) => {
       message: "Faculty credentials email sent successfully!",
     });
   } catch (error) {
-  console.error("Email sending error:", error);
-  res.status(500).json({
-    success: false,
-    message: error.message,
-  });
-}
+    console.error("Email sending error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
 };
 // =======================================================
 export const getAllFaculties = async (req, res) => {
@@ -296,25 +295,33 @@ export const getAllFaculties = async (req, res) => {
       .sort({ createdAt: -1 });
     console.log("First faculty user data:", faculties[0]?.user);
     console.log("First faculty email from user:", faculties[0]?.user?.email);
-    const formatted = faculties.map((f) => ({
-      _id: f._id,
-      employeeID: f.employeeID,
-      name: `${f.firstName} ${f.lastName}`,
-      email: f.user?.email,
-      phone: f.phone,
-      department: f.department,
-      designation: f.designation,
-      qualification: f.qualification,
-      specialization: f.specialization,
-      experience: `${f.experience} years`,
-      joiningDate: f.joiningDate.toISOString().split("T")[0],
-      status: f.status,
-      image: f.profileImage,
-      salary: f.salary,
-      coursesAssigned: f.coursesAssigned,
-      userRole: f.user?.role,
-      isActive: f.user?.isActive,
-    }));
+    const formatted = await Promise.all(
+      faculties.map(async (f) => {
+        const courseCount = await Class.countDocuments({
+          "teachers.teacher": f._id,
+        });
+
+        return {
+          _id: f._id,
+          employeeID: f.employeeID,
+          name: `${f.firstName} ${f.lastName}`,
+          email: f.user?.email,
+          phone: f.phone,
+          department: f.department,
+          designation: f.designation,
+          qualification: f.qualification,
+          specialization: f.specialization,
+          experience: `${f.experience} years`,
+          joiningDate: f.joiningDate.toISOString().split("T")[0],
+          status: f.status,
+          image: f.profileImage,
+          salary: f.salary,
+          coursesAssigned: courseCount,
+          userRole: f.user?.role,
+          isActive: f.user?.isActive,
+        };
+      }),
+    );
     res.status(200).json({
       success: true,
       message: "Faculty Record fetched Successfully",
@@ -367,7 +374,7 @@ export const getFacultyById = async (req, res) => {
     // console.log("Faculty ID received:", req.params.id);
     const faculty = await Faculty.findById(req.params.id).populate(
       "user",
-      "email"
+      "email",
     );
     if (!faculty) {
       return res.status(404).json({

@@ -51,8 +51,6 @@ const facultySchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
-
-    // password: { type: String, required: true },
     coursesAssigned: { type: Number, default: 0 },
   },
   { timestamps: true }
