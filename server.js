@@ -10,6 +10,7 @@ import AdminStatistics from './Routes/AdminStats/AdminStats.js'
 import AdminStudentVUD from './Routes/AdminStats/StudentVUD.js'
 import AdminCoordinator from './Routes/AdminCoordinator/RegisterCoordinator.js'
 import classRoute from './Routes/AdminClassRoutes/AdminClassesCRUD.js'
+import adminAttendance from './Routes/AdminAttendance/Attendance.js'
 dotenv.config();
 
 const app = express();
@@ -53,8 +54,10 @@ app.use('/api/admin/faculty' , FacultyRoutes);
 app.use('/api/faculty/portal' , FacultyPortal);
 // Student
 app.use('/api/students' , StudentRoutes);
-// Attendance system for admin side
+// Classes Assign for admin side
 app.use('/api/admin/classes', classRoute)
+// Attendance System admin side view
+app.use('/api/admin/attendance' , adminAttendance);
 app.listen(PORT,()=>{
-    console.log(`Server is Started at http://localhost:${PORT}`)
+    console.log(`Server is Started at http://localhost:${PORT}`);
 })
