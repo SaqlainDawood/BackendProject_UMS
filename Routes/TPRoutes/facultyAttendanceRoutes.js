@@ -32,3 +32,5 @@ router.put("/attendance/edit/:attendanceId", editAttendance);
 
 // Get attendance report for a class
 router.get("/attendance/report/:classId", getAttendanceReport);
+
+export default router

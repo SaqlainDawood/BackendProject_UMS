@@ -1,8 +1,8 @@
 import mongoose from 'mongoose';
-import Attendance from '../../../Models/Attendance.js';
-import Class from '../../../Models/CreateClass.js';
-import Student from '../../../Models/StudentModel.js'
-import Faculty from '../../../Models/TeacherModel.js';
+import Attendance from '../../Models/Attendance.js';
+import Class from '../../Models/CreateClass.js';
+import Student from '../../Models/StudentModel.js'
+import Faculty from '../../Models/TeacherModel.js';
 
 // ==================== GET STUDENTS FOR A CLASS ====================
 export const getClassStudents = async (req, res) => {
