@@ -7,7 +7,7 @@ import {
 import { protect } from "../../Middleware/authMiddleware.js";
 
 const router = express.Router();
-
+// Student Portal Attendance 
 // All routes use protectStudent middleware which sets req.student
 router.get('/summary', protect, getStudentAttendanceSummary);
 router.get('/course/:classId', protect, getStudentCourseAttendance);
