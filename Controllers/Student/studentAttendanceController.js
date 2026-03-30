@@ -9,9 +9,15 @@ export const getStudentAttendanceSummary = async (req, res) => {
     // Get student from auth middleware
     const student = req.student;
     
-    if (!student) {
-      return res.status(404).json({ success: false, message: 'Student not found' });
+   if (!student) {
+      console.log(' No student in req.student');
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Student not found in request' 
+      });
     }
+
+    console.log('Student found:', student._id, student.firstName, student.lastName);
 
     // Get all classes this student is enrolled in
     const enrolledClasses = await Class.find({
@@ -153,7 +159,7 @@ export const getStudentAttendanceSummary = async (req, res) => {
         absent: monthTotal - monthPresent - monthLate
       });
     }
-
+ console.log('✅ Sending response with', courseWiseAttendance.length, 'courses');
     res.status(200).json({
       success: true,
       data: {

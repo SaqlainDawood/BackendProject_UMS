@@ -56,14 +56,15 @@ app.use('/api/admin/faculty' , FacultyRoutes);
 app.use('/api/faculty/portal' , FacultyPortal);
 // Student
 app.use('/api/students' , StudentRoutes);
+app.use('/api/students/attendance', StudentAttendance); 
 // Classes Assign for admin side
 app.use('/api/admin/classes', classRoute)
 // Attendance System admin side view
 app.use('/api/admin/attendance' , adminAttendance);
 // Facutly Portal Attendance
 app.use('/api/faculty/portal' , FacultyPortalAttendance)
-// Student Attendance in student portal
-app.use('/api/students/attendance', StudentAttendance); 
+
+
 app.listen(PORT,()=>{
     console.log(`Server is Started at http://localhost:${PORT}`);
 })

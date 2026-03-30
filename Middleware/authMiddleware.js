@@ -34,7 +34,7 @@ export const protect = async (req, res, next) => {
       }
       req.user = user;
       req.student = student;
-
+  console.log('Student attached to req:', student._id);
       next();
     } catch (error) {
         console.error("Auth middleware error:", error);
