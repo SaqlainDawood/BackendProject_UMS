@@ -282,27 +282,32 @@ export const studentLogin = async (req, res) => {
     if (!user) {
       return res.status(400).json({
         success: false,
-        message: "Invalid Email......",
+        message: "Invalid Email",
       });
     }
+    
     if (user.role !== "student") {
       return res.status(403).json({
         success: false,
         message: "Access denied. This user is not a student account",
       });
     }
+    
     if (!user.password) {
       return res.status(401).json({
         success: false,
         message: "Credentials not set. Please set credentials first.",
       });
     }
+    
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res
-        .status(401)
-        .json({ success: false, message: "Invalid Password" });
+      return res.status(401).json({ 
+        success: false, 
+        message: "Invalid Password" 
+      });
     }
+    
     const student = await Student.findOne({ user: user._id });
     if (!student) {
       return res.status(404).json({
@@ -311,37 +316,33 @@ export const studentLogin = async (req, res) => {
       });
     }
     
-    // ✅ FIX: Allow multiple valid statuses
-    const validStatuses = ["approved", "active", "assign"];
+    // ✅ DEBUG: Log status
+    console.log('Student Login Attempt:', {
+      email: user.email,
+      studentId: student._id,
+      status: student.status,
+      rollNo: student.rollNo
+    });
     
-    if (student.status === "pending") {
-      return res.status(401).json({
-        success: false,
-        message: "Your admission is still pending approval by the admin.",
-      });
-    }
-    if (student.status === "rejected") {
-      return res.status(401).json({
-        success: false,
-        message: "Your admission is rejected please contact with admin!!!",
-      });
-    }
-    if (student.status === "suspend") {
-      return res.status(401).json({
-        success: false,
-        message: "Your account has been suspended. Please contact admin.",
-      });
-    }
+    // ✅ Blocked statuses that cannot login
+    const blockedStatuses = ["pending", "rejected", "suspend"];
     
-    // ✅ Check if status is valid for login
-    if (!validStatuses.includes(student.status)) {
+    if (blockedStatuses.includes(student.status)) {
+      let message = "";
+      if (student.status === "pending") {
+        message = "Your admission is still pending approval by the admin.";
+      } else if (student.status === "rejected") {
+        message = "Your admission has been rejected. Please contact admin.";
+      } else if (student.status === "suspend") {
+        message = "Your account has been suspended. Please contact admin.";
+      }
       return res.status(401).json({
         success: false,
-        message: `Your account status is "${student.status}". Please contact admin for assistance.`,
+        message: message,
       });
     }
     
-    // ✅ Generate token
+    // ✅ Generate token with longer expiry
     const token = jwt.sign(
       {
         id: user._id,
@@ -350,16 +351,18 @@ export const studentLogin = async (req, res) => {
       },
       process.env.JWT_SECRET,
       {
-        expiresIn: process.env.JWT_EXPIRE || "7d",
+        expiresIn: process.env.JWT_EXPIRE || "7d", // Changed from 2h to 7d
       }
     );
     
     user.lastLogin = new Date();
     await user.save();
+    
+    console.log('✅ Login successful for:', user.email);
 
     res.status(200).json({
       success: true,
-      message: "Login Successfully",
+      message: "Login Successful",
       token,
       user: {
         id: user._id,
@@ -383,9 +386,11 @@ export const studentLogin = async (req, res) => {
     
   } catch (error) {
     console.error("Login error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    res.status(500).json({ 
+      success: false, 
+      message: "Server error", 
+      error: error.message 
+    });
   }
 };
 
