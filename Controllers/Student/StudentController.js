@@ -310,6 +310,10 @@ export const studentLogin = async (req, res) => {
         message: "Student profile not found",
       });
     }
+    
+    // ✅ FIX: Allow multiple valid statuses
+    const validStatuses = ["approved", "active", "assign"];
+    
     if (student.status === "pending") {
       return res.status(401).json({
         success: false,
@@ -322,18 +326,22 @@ export const studentLogin = async (req, res) => {
         message: "Your admission is rejected please contact with admin!!!",
       });
     }
-    if (student.status !== "approved") {
-      // If status is not approved, check if it's "approved" (lowercase) and update it
-      if (student.status === "approved") {
-        student.status = "Approved"; // Fix to match enum
-        await student.save();
-      } else {
-        return res.status(401).json({
-          success: false,
-          message: "Your account is not approved. Current status: " + student.status,
-        });
-      }
+    if (student.status === "suspend") {
+      return res.status(401).json({
+        success: false,
+        message: "Your account has been suspended. Please contact admin.",
+      });
     }
+    
+    // ✅ Check if status is valid for login
+    if (!validStatuses.includes(student.status)) {
+      return res.status(401).json({
+        success: false,
+        message: `Your account status is "${student.status}". Please contact admin for assistance.`,
+      });
+    }
+    
+    // ✅ Generate token
     const token = jwt.sign(
       {
         id: user._id,
@@ -342,9 +350,10 @@ export const studentLogin = async (req, res) => {
       },
       process.env.JWT_SECRET,
       {
-        expiresIn: process.env.JWT_EXPIRE || "2h",
+        expiresIn: process.env.JWT_EXPIRE || "7d",
       }
     );
+    
     user.lastLogin = new Date();
     await user.save();
 
@@ -364,24 +373,14 @@ export const studentLogin = async (req, res) => {
         firstName: student.firstName,
         lastName: student.lastName,
         cnic: student.cnic,
-        DOB: student.DOB,
-        province: student.province,
-        domicile: student.domicile,
+        rollNo: student.rollNo || 'N/A',
         phoneNo: student.phoneNo,
-        presentAddress: student.presentAddress,
-        permanentAddress: student.permanentAddress,
-        religion: student.religion,
-        gender: student.gender,
-        bloodGroup: student.bloodGroup,
-        maritalStatus: student.maritalStatus,
-        nationality: student.nationality,
         status: student.status,
         profileImage: student.profileImage || null,
-        family: student.family || {},
-        academic: student.academic || {},
         enrollment: student.enrollment || {},
       },
     });
+    
   } catch (error) {
     console.error("Login error:", error);
     res
