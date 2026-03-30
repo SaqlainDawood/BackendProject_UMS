@@ -12,6 +12,7 @@ import AdminCoordinator from './Routes/AdminCoordinator/RegisterCoordinator.js'
 import classRoute from './Routes/AdminClassRoutes/AdminClassesCRUD.js'
 import adminAttendance from './Routes/AdminAttendance/Attendance.js'
 import FacultyPortalAttendance from './Routes/TPRoutes/facultyAttendanceRoutes.js'
+import StudentAttendance from './Routes/StudentPortal/studentRoutes.js'
 dotenv.config();
 
 const app = express();
@@ -61,6 +62,8 @@ app.use('/api/admin/classes', classRoute)
 app.use('/api/admin/attendance' , adminAttendance);
 // Facutly Portal Attendance
 app.use('/api/faculty/portal' , FacultyPortalAttendance)
+// Student Attendance in student portal
+app.use('/api/student' , StudentAttendance);
 app.listen(PORT,()=>{
     console.log(`Server is Started at http://localhost:${PORT}`);
 })
