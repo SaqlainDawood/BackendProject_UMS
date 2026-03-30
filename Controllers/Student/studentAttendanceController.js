@@ -6,22 +6,16 @@ import Student from '../../Models/StudentModel.js';
 // ==================== GET STUDENT ATTENDANCE SUMMARY ====================
 export const getStudentAttendanceSummary = async (req, res) => {
   try {
-    const { studentId } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(studentId)) {
-      return res.status(400).json({ success: false, message: 'Invalid student ID' });
-    }
-    // Get student details
-    const student = await Student.findById(studentId)
-      .populate('user', 'email')
-      .select('firstName lastName rollNo enrollment profileImage');
-
+    // Get student from auth middleware
+    const student = req.student;
+    
     if (!student) {
       return res.status(404).json({ success: false, message: 'Student not found' });
     }
 
     // Get all classes this student is enrolled in
     const enrolledClasses = await Class.find({
-      'students.student': studentId,
+      'students.student': student._id,
       'students.status': 'enrolled',
       isActive: true
     }).populate('teachers.teacher', 'firstName lastName');
@@ -55,7 +49,7 @@ export const getStudentAttendanceSummary = async (req, res) => {
 
     // Get all attendance records for this student
     const attendanceRecords = await Attendance.find({
-      studentId,
+      studentId: student._id,
       classId: { $in: classIds }
     }).sort({ date: -1 });
 
@@ -195,10 +189,11 @@ export const getStudentAttendanceSummary = async (req, res) => {
 // ==================== GET STUDENT ATTENDANCE BY COURSE ====================
 export const getStudentCourseAttendance = async (req, res) => {
   try {
-    const { studentId, classId } = req.params;
+    const { classId } = req.params;
+    const student = req.student;
 
-    if (!mongoose.Types.ObjectId.isValid(studentId) || !mongoose.Types.ObjectId.isValid(classId)) {
-      return res.status(400).json({ success: false, message: 'Invalid ID format' });
+    if (!mongoose.Types.ObjectId.isValid(classId)) {
+      return res.status(400).json({ success: false, message: 'Invalid class ID' });
     }
 
     // Get course details
@@ -211,7 +206,7 @@ export const getStudentCourseAttendance = async (req, res) => {
 
     // Get attendance records for this student and course
     const attendanceRecords = await Attendance.find({
-      studentId,
+      studentId: student._id,
       classId
     }).sort({ date: -1 });
 
@@ -296,22 +291,17 @@ export const getStudentCourseAttendance = async (req, res) => {
 // ==================== EXPORT STUDENT ATTENDANCE REPORT ====================
 export const exportStudentAttendance = async (req, res) => {
   try {
-    const { studentId } = req.params;
-
-    const student = await Student.findById(studentId);
-    if (!student) {
-      return res.status(404).json({ success: false, message: 'Student not found' });
-    }
+    const student = req.student;
 
     const enrolledClasses = await Class.find({
-      'students.student': studentId,
+      'students.student': student._id,
       'students.status': 'enrolled',
       isActive: true
     });
 
     const classIds = enrolledClasses.map(c => c._id);
     const attendanceRecords = await Attendance.find({
-      studentId,
+      studentId: student._id,
       classId: { $in: classIds }
     }).sort({ date: -1 }).populate('classId', 'classCode className subject');
 
@@ -332,7 +322,7 @@ export const exportStudentAttendance = async (req, res) => {
     ].join('\n');
 
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename=attendance_${student.rollNo}.csv`);
+    res.setHeader('Content-Disposition', `attachment; filename=attendance_${student.rollNo || 'student'}.csv`);
     res.send(csvContent);
 
   } catch (error) {

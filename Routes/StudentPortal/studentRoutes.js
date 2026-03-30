@@ -1,14 +1,16 @@
 import express from "express";
-
 import {
   getStudentAttendanceSummary,
   getStudentCourseAttendance,
   exportStudentAttendance,
 } from "../../Controllers/Student/studentAttendanceController.js";
-import { protect } from "../../Middleware/authMiddleware.js";
+import { protectStudent } from "../../Middleware/authMiddleware.js";
+
 const router = express.Router();
-router.get('/attendance/summary/:studentId', protect, getStudentAttendanceSummary);
-router.get('/attendance/course/:studentId/:classId', protect, getStudentCourseAttendance);
-router.get('/attendance/export/:studentId', protect, exportStudentAttendance);
+
+// All routes use protectStudent middleware which sets req.student
+router.get('/summary', protectStudent, getStudentAttendanceSummary);
+router.get('/course/:classId', protectStudent, getStudentCourseAttendance);
+router.get('/export', protectStudent, exportStudentAttendance);
 
 export default router;

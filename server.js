@@ -63,7 +63,7 @@ app.use('/api/admin/attendance' , adminAttendance);
 // Facutly Portal Attendance
 app.use('/api/faculty/portal' , FacultyPortalAttendance)
 // Student Attendance in student portal
-app.use('/api/student' , StudentAttendance);
+app.use('/api/students/attendance', StudentAttendance); 
 app.listen(PORT,()=>{
     console.log(`Server is Started at http://localhost:${PORT}`);
 })
