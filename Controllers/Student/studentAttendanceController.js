@@ -26,31 +26,33 @@ export const getStudentAttendanceSummary = async (req, res) => {
       isActive: true
     }).populate('teachers.teacher', 'firstName lastName');
 
-    if (enrolledClasses.length === 0) {
-      return res.status(200).json({
-        success: true,
-        data: {
-          student: {
-            id: student._id,
-            name: `${student.firstName} ${student.lastName}`,
-            rollNo: student.rollNo || 'N/A',
-            email: student.user?.email,
-            program: student.enrollment?.program || 'N/A',
-            semester: student.enrollment?.semester || 'N/A',
-            department: student.enrollment?.department || 'N/A',
-            profileImage: student.profileImage?.url
-          },
-          courses: [],
-          overallAttendance: 0,
-          totalClasses: 0,
-          totalPresent: 0,
-          totalAbsent: 0,
-          totalLate: 0,
-          message: 'No courses enrolled yet'
-        }
-      });
+   if (enrolledClasses.length === 0) {
+  return res.status(200).json({
+    success: true,
+    data: {
+      student: {
+        id: student._id,
+        name: `${student.firstName} ${student.lastName}`,
+        rollNo: student.rollNo || 'N/A',
+        email: student.user?.email,
+        program: student.enrollment?.program || 'N/A',
+        semester: student.enrollment?.semester || 'N/A',
+        department: student.enrollment?.department || 'N/A',
+        profileImage: student.profileImage?.url
+      },
+      stats: {  
+        overallAttendance: 0,
+        totalClasses: 0,
+        totalPresent: 0,
+        totalLate: 0,
+        totalAbsent: 0
+      },
+      courses: [],
+      recentAttendance: [],
+      monthlySummary: []
     }
-
+  });
+}
     const classIds = enrolledClasses.map(c => c._id);
 
     // Get all attendance records for this student
