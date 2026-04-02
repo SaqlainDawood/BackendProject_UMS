@@ -71,7 +71,7 @@ const StudentSchema = new mongoose.Schema({
   status: {
     type: String,
    enum: ["draft", "pending", "approved", "unassigned", "assign", "rejected", "active","suspend"],
-default: "draft",
+default: "pending",
   },
   rejectionReason: { type: String, default: null },
   rollNo: { type: String, default: null },
