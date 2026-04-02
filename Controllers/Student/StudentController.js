@@ -2,10 +2,8 @@ import Student from "../../Models/StudentModel.js";
 import User from "../../Models/userModel.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-// Step1: create student with profile image (multipart/form-data)
 export const step1Create = async (req, res) => {
   try {
-    // multer-storage-cloudinary puts file info in req.file
     const {
       firstName,
       lastName,
@@ -22,8 +20,9 @@ export const step1Create = async (req, res) => {
       bloodGroup,
       maritalStatus,
       nationality,
+      studentId,
     } = req.body;
-    // 1. Validate email format
+
     const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
     if (!emailRegex.test(email)) {
       return res.status(400).json({
@@ -32,83 +31,105 @@ export const step1Create = async (req, res) => {
       });
     }
 
-    // 2. Check for duplicate email
-    const existingUser = await User.findOne({
-      email: email.toLowerCase().trim(),
-    });
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: "Email already registered. Please use a different email.",
-      });
-    }
-    const user = new User({
-      email: email.toLowerCase().trim(),
-      password: null,
-      role: "student",
-    });
-    await user.save();
+    let student;
+    let isUpdate = false;
 
-    const existingStudent = await Student.findOne({ cnic });
-    if (existingStudent) {
-      return res.status(400).json({
-        success: false,
-        message: "Student with this CNIC already exists",
-      });
-    }
-    const profile = req.file
-      ? {
-          url: req.file.path, // multer-storage-cloudinary sets path as secure url
-          public_id: req.file.filename, // may be available depending on storage lib; check object
+    // ✅ UPDATE CASE
+    if (studentId) {
+      student = await Student.findById(studentId).populate("user");
+
+      if (student) {
+        isUpdate = true;
+
+        student.firstName = firstName;
+        student.lastName = lastName;
+        student.phoneNo = phoneNo;
+        student.cnic = cnic;
+        student.presentAddress = presentAddress;
+        student.permanentAddress = permanentAddress;
+        student.religion = religion;
+        student.gender = gender;
+        student.bloodGroup = bloodGroup;
+        student.maritalStatus = maritalStatus;
+        student.nationality = nationality;
+        student.DOB = DOB ? new Date(DOB) : undefined;
+        student.province = province;
+        student.domicile = domicile;
+
+        if (req.file) {
+          student.profileImage = {
+            url: req.file.path,
+            public_id: req.file.filename,
+          };
         }
-      : {};
-    // const existingStudent = await Student.findOne({
-    //   $or: [{ email }, { cnic }],
-    // });
-    // if (existingStudent) {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "Student email or CNIC already exist ",
-    //   });
-    // }
 
-    const student = new Student({
-      user: user._id,
-      firstName,
-      lastName,
-      phoneNo,
-      cnic,
-      presentAddress,
-      permanentAddress,
-      religion,
-      gender,
-      bloodGroup,
-      maritalStatus,
-      nationality,
-      DOB: DOB ? new Date(DOB) : undefined,
-      province,
-      domicile,
-      profileImage: profile,
-    });
+        await student.save();
+      }
+    }
 
-    await student.save();
+    // ✅ CREATE CASE
+    if (!isUpdate) {
+      const existingUser = await User.findOne({
+        email: email.toLowerCase().trim(),
+      });
 
-    return res.status(201).json({
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: "Email already exists",
+        });
+      }
+
+      const user = new User({
+        email: email.toLowerCase().trim(),
+        password: null,
+        role: "student",
+      });
+
+      await user.save();
+
+      const profile = req.file
+        ? {
+            url: req.file.path,
+            public_id: req.file.filename,
+          }
+        : {};
+
+      student = new Student({
+        user: user._id,
+        firstName,
+        lastName,
+        phoneNo,
+        cnic,
+        presentAddress,
+        permanentAddress,
+        religion,
+        gender,
+        bloodGroup,
+        maritalStatus,
+        nationality,
+        DOB: DOB ? new Date(DOB) : undefined,
+        province,
+        domicile,
+        profileImage: profile,
+
+        // ✅ IMPORTANT FIX
+        status: "draft", // ← YEH LINE ADD KI HAI
+      });
+
+      await student.save();
+    }
+
+    return res.status(200).json({
       success: true,
-      message: "Student or user created successfully",
+      message: isUpdate ? "Updated" : "Created",
       studentId: student._id,
     });
   } catch (error) {
-    console.error("Step1 error:", error);
-    if (error.code === 11000 && error.keyPattern?.cnic) {
-      return res.status(400).json({
-        success: false,
-        message: "CNIC already registered",
-      });
-    }
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
@@ -141,9 +162,6 @@ export const step2Update = async (req, res) => {
 };
 
 // Step3: update academic
-
-// Backend route for step3
-
 export const step3Update = async (req, res) => {
   try {
     const { studentId } = req.params;
@@ -245,6 +263,14 @@ export const step4Update = async (req, res) => {
     const { id } = req.params;
     const { program, session, department, shift, campus, semester } = req.body;
 
+    // ✅ VALIDATION FIX
+    if (!program || !department || !session) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
     const student = await Student.findByIdAndUpdate(
       id,
       {
@@ -257,21 +283,29 @@ export const step4Update = async (req, res) => {
           session,
           appliedOn: new Date(),
         },
+
+        // ✅ FINAL FIX
+        status: "completed", // ← YEH LINE ADD KI HAI
       },
       { new: true }
     );
 
-    if (!student)
-      return res
-        .status(404)
-        .json({ success: false, message: "Student not found" });
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found",
+      });
+    }
 
-    return res.json({ success: true, message: "Step 4 saved", student });
+    return res.json({
+      success: true,
+      message: "Registration Completed",
+    });
   } catch (error) {
-    console.error("Step4 error:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 export const studentLogin = async (req, res) => {
