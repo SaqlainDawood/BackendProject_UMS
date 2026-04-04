@@ -283,13 +283,10 @@ export const step4Update = async (req, res) => {
           session,
           appliedOn: new Date(),
         },
-
-        // ✅ FINAL FIX
-        status: "completed", // ← YEH LINE ADD KI HAI
+        status: "pending"
       },
       { new: true }
     );
-
     if (!student) {
       return res.status(404).json({
         success: false,
@@ -361,20 +358,30 @@ export const studentLogin = async (req, res) => {
     // ✅ Blocked statuses that cannot login
     const blockedStatuses = ["pending", "rejected", "suspend"];
     
-    if (blockedStatuses.includes(student.status)) {
-      let message = "";
-      if (student.status === "pending") {
-        message = "Your admission is still pending approval by the admin.";
-      } else if (student.status === "rejected") {
-        message = "Your admission has been rejected. Please contact admin.";
-      } else if (student.status === "suspend") {
-        message = "Your account has been suspended. Please contact admin.";
-      }
-      return res.status(401).json({
-        success: false,
-        message: message,
-      });
-    }
+   if (student.status !== "approved") {
+  let message = "";
+
+  if (student.status === "draft") {
+    message = "Please complete your registration first.";
+  } 
+  else if (student.status === "pending") {
+    message = "Your account is waiting for admin approval.";
+  } 
+  else if (student.status === "rejected") {
+    message = "Your application has been rejected.";
+  } 
+  else if (student.status === "suspend") {
+    message = "Your account is suspended.";
+  } 
+  else {
+    message = "You are not allowed to login.";
+  }
+
+  return res.status(403).json({
+    success: false,
+    message,
+  });
+}
     
     // ✅ Generate token with longer expiry
     const token = jwt.sign(
