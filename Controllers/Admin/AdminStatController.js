@@ -70,6 +70,7 @@ export const getPendingStudents = async (req, res) => {
   }
 };
 // Admin Approve Students
+
 export const approveStudents = async (req, res) => {
   try {
     const student = await Student.findByIdAndUpdate(
@@ -77,59 +78,43 @@ export const approveStudents = async (req, res) => {
       { status: "approved" },
       { new: true }
     ).populate("user", "email");
-    
+
     if (!student) {
       return res.status(400).json({
         success: false,
         message: "Student not found",
       });
     }
-    
-    console.log(" Original Student Object:", JSON.stringify(student, null, 2));
-    console.log(" Student keys:", Object.keys(student));
-    console.log(" Has studentName?", "studentName" in student);
-    console.log(" student.studentName value:", student.studentName);
-    
-    // Extract email
-    const email = student.email || (student.user && student.user.email);
-    
-    // Check what data is actually in the student object
-    const studentDataForEmail = {
-       studentName: `${student.firstName} ${student.lastName}`,
-      program: student.enrollment.program,
-      department: student.enrollment.department,
-      semester: student.enrollment.semester,
-      session:student.enrollment.session,
-      password: student.user?.password,
-      email: email,
-      user: student.user
-    };
-    
-    console.log(" Prepared studentDataForEmail:", JSON.stringify(studentDataForEmail, null, 2));
-    
-    console.log(" Final Email To Send:", email);
 
-    if (!email) {
-      console.log(" No email found in student object!");
-    } else {
-      try {
-        await sendApprovalEmail(studentDataForEmail);
-        console.log(` Approval email sent to ${email}`);
-      } catch (emailError) {
-        console.error(" Email sending failed:", emailError);
-      }
+    const email = student.email || student.user?.email;
+
+    const studentDataForEmail = {
+      studentName: `${student.firstName} ${student.lastName}`,
+      program: student.enrollment?.program,
+      department: student.enrollment?.department,
+      semester: student.enrollment?.semester,
+      email: email,
+    };
+
+    // ✅ IMPORTANT: Email background me bhejo (FAST API)
+    if (email) {
+      setImmediate(() => {
+        sendApprovalEmail(studentDataForEmail);
+      });
     }
-    
+
+    // ✅ Instant response
     res.status(200).json({
       success: true,
       message: "Student Approved Successfully",
       student,
     });
+
   } catch (error) {
-    console.log("Approve Students Error:", error);
+    console.log("Approve Error:", error);
     res.status(500).json({
       success: false,
-      message: error.message || "Approved Students Error",
+      message: error.message,
     });
   }
 };
