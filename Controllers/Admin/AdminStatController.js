@@ -96,11 +96,15 @@ export const approveStudents = async (req, res) => {
       email: email,
     };
 
-   console.log("🔥 Calling Email Function...");
+    // ✅ DIRECT CALL (NO setImmediate)
+    if (email) {
+      console.log("🔥 Calling Email Function...");
 
-sendApprovalEmail(studentDataForEmail)
-  .then(() => console.log("✅ Email sent successfully"))
-  .catch(err => console.log(" Email failed:", err));
+      sendApprovalEmail(studentDataForEmail)
+        .then(() => console.log("✅ Email sent successfully"))
+        .catch((err) => console.log("❌ Email failed:", err));
+    }
+
     res.status(200).json({
       success: true,
       message: "Student Approved Successfully",
