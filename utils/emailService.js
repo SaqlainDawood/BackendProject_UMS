@@ -41,7 +41,7 @@ export const sendApprovalEmail = async (student) => {
         <p><b>Semester:</b> ${student.semester}</p>
 
         <br/>
-        <a href="${process.env.PORTAL_URL}">Login Portal</a>
+        <a href="${process.env.FRONT_END_URL}">Login Portal</a>
 
         <p>Regards,<br/>${process.env.UNIVERSITY_NAME}</p>
       `,
