@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer";
 
-// ✅ GLOBAL transporter (ek hi baar banega)
+// ✅ Transporter
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -9,7 +9,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// ✅ Verify connection (optional but recommended)
+// ✅ Verify (optional)
 transporter.verify((error, success) => {
   if (error) {
     console.log("❌ Email server error:", error);
@@ -18,10 +18,14 @@ transporter.verify((error, success) => {
   }
 });
 
-// ✅ Send Email Function
+// ✅ YAHAN YE FUNCTION LIKHNA HAI
 export const sendApprovalEmail = async (student) => {
+  console.log("📧 FUNCTION STARTED");
+
   try {
     const email = student.email || student.user?.email;
+
+    console.log("📧 Email:", email);
 
     if (!email) {
       console.log("❌ No email found");
@@ -31,20 +35,8 @@ export const sendApprovalEmail = async (student) => {
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: email,
-      subject: `Admission Approved - ${process.env.UNIVERSITY_NAME}`,
-      html: `
-        <h2>Dear ${student.studentName}</h2>
-        <p>Your admission has been <b>approved</b>.</p>
-
-        <p><b>Program:</b> ${student.program}</p>
-        <p><b>Department:</b> ${student.department}</p>
-        <p><b>Semester:</b> ${student.semester}</p>
-
-        <br/>
-        <a href="${process.env.FRONT_END_URL}">Login Portal</a>
-
-        <p>Regards,<br/>${process.env.UNIVERSITY_NAME}</p>
-      `,
+      subject: "Test Email",
+      html: `<h2>Hello ${student.studentName}</h2>`
     };
 
     const info = await transporter.sendMail(mailOptions);
@@ -52,6 +44,6 @@ export const sendApprovalEmail = async (student) => {
     console.log("✅ Email sent:", info.response);
 
   } catch (error) {
-    console.log("❌ Email error:", error.message);
+    console.log("❌ FULL ERROR:", error);
   }
 };

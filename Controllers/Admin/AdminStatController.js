@@ -96,12 +96,11 @@ export const approveStudents = async (req, res) => {
       email: email,
     };
 
-    // ✅ IMPORTANT: Email background me bhejo (FAST API)
-   sendApprovalEmail(studentDataForEmail)
-  .then(() => console.log("📧 Email sent successfully"))
-  .catch(err => console.log("❌ Email failed:", err.message));
+   console.log("🔥 Calling Email Function...");
 
-    // ✅ Instant response
+sendApprovalEmail(studentDataForEmail)
+  .then(() => console.log("✅ Email sent successfully"))
+  .catch(err => console.log(" Email failed:", err));
     res.status(200).json({
       success: true,
       message: "Student Approved Successfully",
