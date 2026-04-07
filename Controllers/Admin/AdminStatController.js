@@ -70,10 +70,8 @@ export const getPendingStudents = async (req, res) => {
   }
 };
 // Admin Approve Students
-
 export const approveStudents = async (req, res) => {
-  console.log(" Approve Students API called for ID:", req.params.id);
-  
+  console.log("🚀 Approve Students API called for ID:", req.params.id);
   try {
     const student = await Student.findByIdAndUpdate(
       req.params.id,
@@ -88,18 +86,9 @@ export const approveStudents = async (req, res) => {
       });
     }
 
-    // Get email from multiple possible locations
-    let email = student.email;
-    if (!email && student.user?.email) {
-      email = student.user.email;
-    }
-    if (!email && student.emailAddress) {
-      email = student.emailAddress;
-    }
-
-    console.log("📧 Student email found:", email);
-    console.log("📧 Student name:", `${student.firstName} ${student.lastName}`);
-
+    // Get email
+    let email = student.email || student.user?.email;
+    
     const studentDataForEmail = {
       studentName: `${student.firstName} ${student.lastName}`,
       program: student.enrollment?.program || student.program,
@@ -108,13 +97,11 @@ export const approveStudents = async (req, res) => {
       email: email,
     };
 
-    // Send email asynchronously but track result
-    let emailResult = { success: false, error: "No email sent" };
+    // Send email using Brevo API
+    let emailResult = { success: false, error: "No email provided" };
     
     if (email) {
-      console.log("📧 Sending approval email...");
-      
-      // Don't block response, but log the result
+      console.log("📧 Sending approval email via Brevo API...");
       emailResult = await sendApprovalEmail(studentDataForEmail);
       
       if (emailResult.success) {
@@ -123,14 +110,14 @@ export const approveStudents = async (req, res) => {
         console.log("❌ Email failed:", emailResult.error);
       }
     } else {
-      console.log("⚠️ No email found for student - email not sent");
+      console.log("⚠️ No email found for student");
     }
 
     res.status(200).json({
       success: true,
       message: "Student Approved Successfully",
       emailSent: emailResult.success,
-      emailError: emailResult.error,
+      emailMessageId: emailResult.messageId,
       student,
     });
 

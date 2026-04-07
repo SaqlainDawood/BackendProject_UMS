@@ -1,187 +1,162 @@
-import nodemailer from "nodemailer";
-import dotenv from "dotenv";
+import SibApiV3Sdk from '@getbrevo/brevo';
+import dotenv from 'dotenv';
 dotenv.config();
 
-// Create transporter with better configuration
-const createTransporter = () => {
-  // Validate credentials
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.error("❌ EMAIL_USER or EMAIL_PASS is missing in environment variables");
-    return null;
-  }
+console.log("=".repeat(50));
+console.log("🔥 LOADING BREVO API EMAIL SERVICE");
+console.log("=".repeat(50));
+console.log("BREVO_API_KEY exists:", !!process.env.BREVO_API_KEY);
+console.log("BREVO_API_KEY length:", process.env.BREVO_API_KEY?.length);
+console.log("BREVO_API_KEY first 20 chars:", process.env.BREVO_API_KEY?.substring(0, 20));
+console.log("EMAIL_USER:", process.env.EMAIL_USER);
+console.log("=".repeat(50));
 
-  return nodemailer.createTransport({
-    host: "smtp-relay.brevo.com",
-    port: 587,
-    secure: false, // TLS required
-    auth: {
-      user: process.env.EMAIL_USER.trim(),
-      pass: process.env.EMAIL_PASS.trim(),
-    },
-    connectionTimeout: 30000, // Increased to 30 seconds
-    greetingTimeout: 30000,
-    socketTimeout: 30000,
-    debug: true, // Enable debug mode for Render logs
-    logger: true, // Enable logging
-  });
-};
+// Initialize Brevo client
+let apiInstance = null;
 
-let transporter = createTransporter();
-
-// Verify transporter with retry logic
-export const verifyEmailConnection = async (retries = 3) => {
-  if (!transporter) {
-    console.error("❌ Transporter not created - check credentials");
-    return false;
-  }
-
-  for (let i = 0; i < retries; i++) {
+const initializeBrevo = () => {
+  if (!apiInstance) {
     try {
-      await transporter.verify();
-      console.log("✅ Email server ready and verified");
-      return true;
+      const defaultClient = SibApiV3Sdk.ApiClient.instance;
+      const apiKey = defaultClient.authentications['api-key'];
+      apiKey.apiKey = process.env.BREVO_API_KEY;
+      apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+      console.log("✅ Brevo API client initialized successfully");
     } catch (error) {
-      console.log(`❌ Email verification attempt ${i + 1} failed:`, error.message);
-      if (i === retries - 1) return false;
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.error("❌ Failed to initialize Brevo client:", error);
+      throw error;
     }
   }
-  return false;
+  return apiInstance;
 };
 
-// Test email function
-export const testEmailConfig = async () => {
-  console.log("📧 Testing email configuration...");
-  console.log("EMAIL_USER:", process.env.EMAIL_USER);
-  console.log("EMAIL_PASS length:", process.env.EMAIL_PASS?.length);
-  console.log("UNIVERSITY_NAME:", process.env.UNIVERSITY_NAME);
-  console.log("FRONT_END_URL:", process.env.FRONT_END_URL);
-
-  const isVerified = await verifyEmailConnection();
-  if (!isVerified) {
-    console.error("❌ Email verification failed");
-    return false;
-  }
-  return true;
-};
-
-// Send approval email with better error handling
+// Send approval email to a single student
 export const sendApprovalEmail = async (student) => {
-  console.log("📧 sendApprovalEmail called with:", {
-    studentName: student.studentName,
-    email: student.email,
-    hasEmail: !!student.email
-  });
-
+  console.log("📧 [BREVO API] Sending approval email to:", student.email);
+  console.log("[BREVO API] Student name:", student.studentName);
+  
   try {
     // Validate email
-    const email = student.email;
-    if (!email) {
-      console.log("❌ No email address found for student");
+    if (!student.email) {
+      console.log("❌ No email address provided");
       return { success: false, error: "No email address" };
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      console.log("❌ Invalid email format:", email);
-      return { success: false, error: "Invalid email format" };
-    }
-
-    // Recreate transporter if needed
-    if (!transporter) {
-      transporter = createTransporter();
-      if (!transporter) {
-        throw new Error("Failed to create email transporter");
-      }
-    }
-
-    const mailOptions = {
-      from: `"${process.env.UNIVERSITY_NAME}" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: `Admission Approved - ${process.env.UNIVERSITY_NAME}`,
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Admission Approved</title>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background-color: #4CAF50; color: white; padding: 20px; text-align: center; }
-            .content { padding: 20px; background-color: #f9f9f9; }
-            .details { background-color: #fff; padding: 15px; margin: 15px 0; border-radius: 5px; }
-            .button { display: inline-block; padding: 12px 24px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px; margin-top: 20px; }
-            .footer { margin-top: 20px; padding: 20px; text-align: center; font-size: 12px; color: #666; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h2>Admission Approved! 🎉</h2>
-            </div>
-            <div class="content">
-              <h3>Dear ${student.studentName},</h3>
-              <p>Congratulations! Your admission has been <strong>approved</strong> to ${process.env.UNIVERSITY_NAME}.</p>
-              
-              <div class="details">
-                <h4>Enrollment Details:</h4>
-                <p><strong>Program:</strong> ${student.program || 'Not specified'}</p>
-                <p><strong>Department:</strong> ${student.department || 'Not specified'}</p>
-                <p><strong>Semester:</strong> ${student.semester || 'Not specified'}</p>
-              </div>
-              
-              <p>You can now login to the student portal to complete your registration and access university resources.</p>
-              
-              <div style="text-align: center;">
-                <a href="${process.env.FRONT_END_URL}" class="button">Login to Portal</a>
-              </div>
-              
-              <p style="margin-top: 20px;">If you have any questions, please contact the admissions office at ${process.env.UNIVERSITY_CONTACT}.</p>
-            </div>
-            <div class="footer">
-              <p>&copy; ${new Date().getFullYear()} ${process.env.UNIVERSITY_NAME}. All rights reserved.</p>
-              <p>This is an automated message, please do not reply to this email.</p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `,
-      text: `Dear ${student.studentName},\n\nCongratulations! Your admission has been approved to ${process.env.UNIVERSITY_NAME}.\n\nProgram: ${student.program || 'Not specified'}\nDepartment: ${student.department || 'Not specified'}\nSemester: ${student.semester || 'Not specified'}\n\nYou can login to the student portal: ${process.env.FRONT_END_URL}\n\nFor questions, contact: ${process.env.UNIVERSITY_CONTACT}\n\nRegards,\n${process.env.UNIVERSITY_NAME}`,
-    };
-
-    console.log("📧 Attempting to send email to:", email);
-    const info = await transporter.sendMail(mailOptions);
-    console.log("✅ Email sent successfully!");
-    console.log("📧 Message ID:", info.messageId);
-    console.log("📧 Response:", info.response);
+    // Initialize API client
+    const api = initializeBrevo();
     
-    return { success: true, messageId: info.messageId };
+    // Create email object
+    const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+    
+    // Sender information
+    sendSmtpEmail.sender = {
+      name: process.env.UNIVERSITY_NAME || "University of Education",
+      email: process.env.EMAIL_USER || "a73db3001@smtp-brevo.com"
+    };
+    
+    // Recipient
+    sendSmtpEmail.to = [{
+      email: student.email,
+      name: student.studentName || "Student"
+    }];
+    
+    // Email subject
+    sendSmtpEmail.subject = `Admission Approved - ${process.env.UNIVERSITY_NAME}`;
+    
+    // Simple HTML content (avoid complex styles for testing)
+    sendSmtpEmail.htmlContent = `
+      <h2>Admission Approved! 🎉</h2>
+      <p>Dear ${student.studentName},</p>
+      <p>Congratulations! Your admission to <strong>${process.env.UNIVERSITY_NAME}</strong> has been approved.</p>
+      <h3>Enrollment Details:</h3>
+      <ul>
+        <li><strong>Program:</strong> ${student.program || 'Not specified'}</li>
+        <li><strong>Department:</strong> ${student.department || 'Not specified'}</li>
+        <li><strong>Semester:</strong> ${student.semester || 'Not specified'}</li>
+      </ul>
+      <p>Login to portal: <a href="${process.env.FRONT_END_URL}">${process.env.FRONT_END_URL}</a></p>
+      <p>Contact: ${process.env.UNIVERSITY_CONTACT}</p>
+      <p>Regards,<br/>${process.env.UNIVERSITY_NAME}</p>
+    `;
+    
+    sendSmtpEmail.textContent = `
+      Dear ${student.studentName},
+      
+      Congratulations! Your admission to ${process.env.UNIVERSITY_NAME} has been approved.
+      
+      Enrollment Details:
+      Program: ${student.program || 'Not specified'}
+      Department: ${student.department || 'Not specified'}
+      Semester: ${student.semester || 'Not specified'}
+      
+      Login: ${process.env.FRONT_END_URL}
+      Contact: ${process.env.UNIVERSITY_CONTACT}
+      
+      Regards,
+      ${process.env.UNIVERSITY_NAME}
+    `;
+    
+    // Send email
+    console.log("📤 Sending via Brevo API (HTTPS)...");
+    const data = await api.sendTransacEmail(sendSmtpEmail);
+    
+    console.log("✅ Email sent successfully via Brevo API!");
+    console.log("📧 Message ID:", data.messageId);
+    
+    return { 
+      success: true, 
+      messageId: data.messageId,
+      email: student.email 
+    };
     
   } catch (error) {
-    console.error("❌ Email sending failed:");
-    console.error("Error name:", error.name);
-    console.error("Error message:", error.message);
-    console.error("Error code:", error.code);
-    console.error("Command:", error.command);
-    console.error("Response:", error.response);
+    console.error("❌ Brevo API Error:", error.message);
     
-    // Specific error handling
-    if (error.code === 'EAUTH') {
-      console.error("🔐 Authentication failed - Check EMAIL_USER and EMAIL_PASS");
-    } else if (error.code === 'ECONNECTION') {
-      console.error("🔌 Connection failed - Check network/SMTP settings");
-    } else if (error.code === 'ESOCKET') {
-      console.error("💻 Socket timeout - Increase timeouts or check internet");
+    if (error.response) {
+      console.error("Response status:", error.response.status);
+      console.error("Response body:", JSON.stringify(error.response.body, null, 2));
+      
+      if (error.response.status === 401) {
+        console.error("⚠️ Invalid API key! Check your BREVO_API_KEY");
+      }
     }
     
-    return { success: false, error: error.message };
+    return { 
+      success: false, 
+      error: error.message
+    };
   }
 };
 
-// Re-verify connection every hour
-setInterval(async () => {
-  await verifyEmailConnection();
-}, 3600000);
+// Test function
+export const testBrevoConnection = async (testEmail) => {
+  console.log("🔧 Testing Brevo API connection...");
+  
+  const result = await sendApprovalEmail({
+    studentName: "Test User",
+    program: "Test Program",
+    department: "Test Department",
+    semester: "Test Semester",
+    email: testEmail
+  });
+  
+  return result;
+};
+
+export const sendBulkApprovalEmails = async (students) => {
+  console.log(`📧 Sending bulk emails to ${students.length} students`);
+  
+  const results = { success: [], failed: [], total: students.length };
+  
+  for (const student of students) {
+    const result = await sendApprovalEmail(student);
+    if (result.success) {
+      results.success.push(student.email);
+    } else {
+      results.failed.push({ email: student.email, error: result.error });
+    }
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+  
+  return results;
+};
