@@ -2,6 +2,7 @@ import express from 'express'
 import { getTotalStudents , getStudentsStats, getPendingStudents, approveStudents, rejectStudent, getUnassignRollStd, assignRollNoStd } from '../../Controllers/Admin/AdminStatController.js';
 import { protectAdmin } from '../../Middleware/adminAuth.js';
 import { getAllStudentList } from '../../Controllers/Admin/AllStdListController.js';
+import { testBrevoConnection } from '../../utils/emailService.js';
 const router = express.Router();
 
 router.get('/total-students' ,protectAdmin, getTotalStudents);

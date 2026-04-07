@@ -1,4 +1,4 @@
-import SibApiV3Sdk from '@getbrevo/brevo';
+import * as SibApiV3Sdk from '@getbrevo/brevo';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -7,7 +7,6 @@ console.log("🔥 LOADING BREVO API EMAIL SERVICE");
 console.log("=".repeat(50));
 console.log("BREVO_API_KEY exists:", !!process.env.BREVO_API_KEY);
 console.log("BREVO_API_KEY length:", process.env.BREVO_API_KEY?.length);
-console.log("BREVO_API_KEY first 20 chars:", process.env.BREVO_API_KEY?.substring(0, 20));
 console.log("EMAIL_USER:", process.env.EMAIL_USER);
 console.log("=".repeat(50));
 
@@ -63,7 +62,7 @@ export const sendApprovalEmail = async (student) => {
     // Email subject
     sendSmtpEmail.subject = `Admission Approved - ${process.env.UNIVERSITY_NAME}`;
     
-    // Simple HTML content (avoid complex styles for testing)
+    // HTML content
     sendSmtpEmail.htmlContent = `
       <h2>Admission Approved! 🎉</h2>
       <p>Dear ${student.studentName},</p>
@@ -119,18 +118,26 @@ export const sendApprovalEmail = async (student) => {
       if (error.response.status === 401) {
         console.error("⚠️ Invalid API key! Check your BREVO_API_KEY");
       }
+    } else if (error.code) {
+      console.error("Error code:", error.code);
     }
     
     return { 
       success: false, 
-      error: error.message
+      error: error.message,
+      details: error.response?.body 
     };
   }
 };
 
-// Test function
+// Test email configuration
 export const testBrevoConnection = async (testEmail) => {
   console.log("🔧 Testing Brevo API connection...");
+  
+  if (!testEmail) {
+    console.log("❌ Please provide a test email address");
+    return { success: false, error: "No test email provided" };
+  }
   
   const result = await sendApprovalEmail({
     studentName: "Test User",
@@ -143,6 +150,7 @@ export const testBrevoConnection = async (testEmail) => {
   return result;
 };
 
+// Send bulk approval emails
 export const sendBulkApprovalEmails = async (students) => {
   console.log(`📧 Sending bulk emails to ${students.length} students`);
   
@@ -155,8 +163,10 @@ export const sendBulkApprovalEmails = async (students) => {
     } else {
       results.failed.push({ email: student.email, error: result.error });
     }
+    // Small delay to avoid rate limiting
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
   
+  console.log(`✅ Success: ${results.success.length}, ❌ Failed: ${results.failed.length}`);
   return results;
 };
