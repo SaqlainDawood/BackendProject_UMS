@@ -72,6 +72,8 @@ export const getPendingStudents = async (req, res) => {
 // Admin Approve Students
 
 export const approveStudents = async (req, res) => {
+  console.log(" Approve Students API called for ID:", req.params.id);
+  
   try {
     const student = await Student.findByIdAndUpdate(
       req.params.id,
@@ -86,33 +88,54 @@ export const approveStudents = async (req, res) => {
       });
     }
 
-    const email = student.email || student.user?.email;
+    // Get email from multiple possible locations
+    let email = student.email;
+    if (!email && student.user?.email) {
+      email = student.user.email;
+    }
+    if (!email && student.emailAddress) {
+      email = student.emailAddress;
+    }
+
+    console.log("📧 Student email found:", email);
+    console.log("📧 Student name:", `${student.firstName} ${student.lastName}`);
 
     const studentDataForEmail = {
       studentName: `${student.firstName} ${student.lastName}`,
-      program: student.enrollment?.program,
-      department: student.enrollment?.department,
-      semester: student.enrollment?.semester,
+      program: student.enrollment?.program || student.program,
+      department: student.enrollment?.department || student.department,
+      semester: student.enrollment?.semester || student.semester,
       email: email,
     };
 
-    // ✅ DIRECT CALL (NO setImmediate)
+    // Send email asynchronously but track result
+    let emailResult = { success: false, error: "No email sent" };
+    
     if (email) {
-      console.log("🔥 Calling Email Function...");
-
-      sendApprovalEmail(studentDataForEmail)
-        .then(() => console.log("✅ Email sent successfully"))
-        .catch((err) => console.log("❌ Email failed:", err));
+      console.log("📧 Sending approval email...");
+      
+      // Don't block response, but log the result
+      emailResult = await sendApprovalEmail(studentDataForEmail);
+      
+      if (emailResult.success) {
+        console.log("✅ Email sent successfully to:", email);
+      } else {
+        console.log("❌ Email failed:", emailResult.error);
+      }
+    } else {
+      console.log("⚠️ No email found for student - email not sent");
     }
 
     res.status(200).json({
       success: true,
       message: "Student Approved Successfully",
+      emailSent: emailResult.success,
+      emailError: emailResult.error,
       student,
     });
 
   } catch (error) {
-    console.log("Approve Error:", error);
+    console.error("❌ Approve Error:", error);
     res.status(500).json({
       success: false,
       message: error.message,
