@@ -13,6 +13,7 @@ import classRoute from './Routes/AdminClassRoutes/AdminClassesCRUD.js'
 import adminAttendance from './Routes/AdminAttendance/Attendance.js'
 import FacultyPortalAttendance from './Routes/TPRoutes/facultyAttendanceRoutes.js'
 import StudentAttendance from './Routes/StudentPortal/studentRoutes.js'
+import studentEnrollmentRoutes from './Routes/AdminClassRoutes/studentEnrollmentRoutes.js'
 dotenv.config();
 
 const app = express();
@@ -58,7 +59,8 @@ app.use('/api/faculty/portal' , FacultyPortal);
 app.use('/api/students' , StudentRoutes);
 app.use('/api/students/attendance', StudentAttendance); 
 // Classes Assign for admin side
-app.use('/api/admin/classes', classRoute)
+app.use('/api/admin/classes', classRoute);
+app.use('/api/admin/classes',studentEnrollmentRoutes);
 // Attendance System admin side view
 app.use('/api/admin/attendance' , adminAttendance);
 // Facutly Portal Attendance

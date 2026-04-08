@@ -21,3 +21,4 @@ router.delete('/:id/permenantly-delete',reactivateClass);
 router.patch('/:id/reactive',reactivateClass);
 
 export default router;
+

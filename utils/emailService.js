@@ -11,26 +11,21 @@ console.log("BREVO_API_KEY length:", process.env.BREVO_API_KEY?.length);
 console.log("EMAIL_USER:", process.env.EMAIL_USER);
 console.log("FRONT_END_URL:", process.env.FRONT_END_URL);
 console.log("=".repeat(50));
-
 // Send approval email using direct API call
 export const sendApprovalEmail = async (student) => {
-    console.log("📧 Sending approval email to:", student.email);
-    console.log("👤 Student name:", student.studentName);
-    
+    console.log(" Sending approval email to:", student.email);
+    console.log(" Student name:", student.studentName);
     try {
         // Validate email
         if (!student.email) {
-            console.log("❌ No email address provided");
+            console.log(" No email address provided");
             return { success: false, error: "No email address" };
         }
-
-        const apiKey = process.env.BREVO_API_KEY;
-        
+        const apiKey = process.env.BREVO_API_KEY;   
         if (!apiKey) {
-            console.error("❌ BREVO_API_KEY is missing in environment variables!");
+            console.error(" BREVO_API_KEY is missing in environment variables!");
             return { success: false, error: "API key missing" };
         }
-
         // Prepare email data
         const emailData = {
             sender: {
@@ -110,9 +105,9 @@ export const sendApprovalEmail = async (student) => {
             `
         };
 
-        console.log("📤 Sending via Brevo API (HTTPS)...");
-        console.log("📧 To:", student.email);
-        console.log("📧 Subject:", emailData.subject);
+        console.log(" Sending via Brevo API (HTTPS)...");
+        console.log(" To:", student.email);
+        console.log(" Subject:", emailData.subject);
         
         // Send email using axios
         const response = await axios.post('https://api.brevo.com/v3/smtp/email', emailData, {
@@ -124,9 +119,9 @@ export const sendApprovalEmail = async (student) => {
             timeout: 30000
         });
 
-        console.log("✅ Email sent successfully!");
-        console.log("📧 Message ID:", response.data.messageId);
-        console.log("📧 Response Code:", response.status);
+        console.log(" Email sent successfully!");
+        console.log(" Message ID:", response.data.messageId);
+        console.log(" Response Code:", response.status);
         
         return {
             success: true,
@@ -135,19 +130,19 @@ export const sendApprovalEmail = async (student) => {
         };
 
     } catch (error) {
-        console.error("❌ Brevo API Error:", error.message);
+        console.error(" Brevo API Error:", error.message);
         
         if (error.response) {
             console.error("Response status:", error.response.status);
             console.error("Response data:", JSON.stringify(error.response.data, null, 2));
             
             if (error.response.status === 401) {
-                console.error("⚠️ Invalid API key! Please check your BREVO_API_KEY in .env file");
+                console.error(" Invalid API key! Please check your BREVO_API_KEY in .env file");
                 console.error("Your API key should start with 'xkeysib-' or 'xsmtpsib-'");
             } else if (error.response.status === 400) {
-                console.error("⚠️ Bad request - Check email format or sender email");
+                console.error(" Bad request - Check email format or sender email");
             } else if (error.response.status === 429) {
-                console.error("⚠️ Rate limit exceeded - Too many emails sent");
+                console.error(" Rate limit exceeded - Too many emails sent");
             }
         } else if (error.request) {
             console.error("No response received from Brevo API");
@@ -165,10 +160,10 @@ export const sendApprovalEmail = async (student) => {
 // Test email configuration
 export const testBrevoConnection = async (testEmail) => {
     console.log("🔧 Testing Brevo API connection...");
-    console.log("📧 Test email:", testEmail);
+    console.log(" Test email:", testEmail);
     
     if (!testEmail) {
-        console.log("❌ No test email provided");
+        console.log(" No test email provided");
         return { success: false, error: "No test email provided" };
     }
     
@@ -185,7 +180,7 @@ export const testBrevoConnection = async (testEmail) => {
 
 // Send bulk approval emails
 export const sendBulkApprovalEmails = async (students) => {
-    console.log(`📧 Sending bulk emails to ${students.length} students`);
+    console.log(` Sending bulk emails to ${students.length} students`);
     
     const results = { 
         success: [], 
@@ -207,6 +202,6 @@ export const sendBulkApprovalEmails = async (students) => {
         await new Promise(resolve => setTimeout(resolve, 500));
     }
     
-    console.log(`✅ Success: ${results.success.length}, ❌ Failed: ${results.failed.length}`);
+    console.log(` Success: ${results.success.length},  Failed: ${results.failed.length}`);
     return results;
 };

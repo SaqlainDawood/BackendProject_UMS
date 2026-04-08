@@ -24,9 +24,7 @@ export const getTotalStudents = async (req, res) => {
     });
   }
 };
-
 // In the studentList page check the total approve rejected students.
-
 export const getStudentsStats = async (req, res) => {
   try {
     const totalStudents = await Student.countDocuments();
@@ -51,7 +49,6 @@ export const getStudentsStats = async (req, res) => {
     });
   }
 };
-
 // In the admin page Pending Students.....
 export const getPendingStudents = async (req, res) => {
   try {
@@ -71,7 +68,7 @@ export const getPendingStudents = async (req, res) => {
 };
 // Admin Approve Students
 export const approveStudents = async (req, res) => {
-  console.log("🚀 Approve Students API called for ID:", req.params.id);
+  console.log(" Approve Students API called for ID:", req.params.id);
   
   try {
     const student = await Student.findByIdAndUpdate(
@@ -88,7 +85,7 @@ export const approveStudents = async (req, res) => {
     }
 
     // ===== DEBUG: Log the entire student object to see what's available =====
-    console.log("📋 Full Student Object:");
+    console.log(" Full Student Object:");
     console.log("Student ID:", student._id);
     console.log("Student Name:", `${student.firstName} ${student.lastName}`);
     console.log("Student.email field:", student.email);
@@ -104,25 +101,25 @@ export const approveStudents = async (req, res) => {
     // Method 1: Direct email field
     if (student.email) {
       email = student.email;
-      console.log("✅ Found email via student.email:", email);
+      console.log(" Found email via student.email:", email);
     }
     // Method 2: From populated user object
     else if (student.user && student.user.email) {
       email = student.user.email;
-      console.log("✅ Found email via student.user.email:", email);
+      console.log(" Found email via student.user.email:", email);
     }
     // Method 3: From user object that might not be populated (string ID)
     else if (student.user && typeof student.user === 'string') {
-      console.log("⚠️ User is not populated. Need to fetch manually...");
+      console.log(" User is not populated. Need to fetch manually...");
       const user = await User.findById(student.user).select("email");
       if (user && user.email) {
         email = user.email;
-        console.log("✅ Found email via manual user lookup:", email);
+        console.log(" Found email via manual user lookup:", email);
       }
     }
     
     if (!email) {
-      console.log("❌ CRITICAL: No email found for student!");
+      console.log(" CRITICAL: No email found for student!");
       console.log("Student data:", {
         id: student._id,
         firstName: student.firstName,
@@ -144,16 +141,16 @@ export const approveStudents = async (req, res) => {
     let emailResult = { success: false, error: "No email provided" };
     
     if (email) {
-      console.log("📧 Sending approval email via Brevo API to:", email);
+      console.log(" Sending approval email via Brevo API to:", email);
       emailResult = await sendApprovalEmail(studentDataForEmail);
       
       if (emailResult.success) {
-        console.log("✅ Email sent successfully to:", email);
+        console.log(" Email sent successfully to:", email);
       } else {
-        console.log("❌ Email failed:", emailResult.error);
+        console.log(" Email failed:", emailResult.error);
       }
     } else {
-      console.log("⚠️ No email found for student - email not sent");
+      console.log(" No email found for student - email not sent");
       
       // Log to database for tracking (optional)
       await Student.findByIdAndUpdate(req.params.id, {
@@ -174,7 +171,7 @@ export const approveStudents = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ Approve Error:", error);
+    console.error(" Approve Error:", error);
     res.status(500).json({
       success: false,
       message: error.message,
@@ -203,7 +200,6 @@ export const rejectStudent = async (req, res) => {
     });
   }
 };
-
 // Admin Assign Roll Number of the students
 // Unassign Roll Number
 export const getUnassignRollStd = async (req, res) => {
