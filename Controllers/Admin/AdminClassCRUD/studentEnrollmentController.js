@@ -4,7 +4,8 @@ import mongoose from "mongoose";
 import { 
   validateStudentEnrollment, 
   checkBulkStudentConflicts,
-  getStudentCompleteSchedule 
+  getStudentCompleteSchedule,
+  checkStudentScheduleConflict
 } from "../../../utils/scheduleUtils.js";
 
 /**
@@ -342,6 +343,7 @@ export const getClassStudents = async (req, res) => {
  * GET /api/classes/:classId/available-students
  */
 export const getAvailableStudents = async (req, res) => {
+    console.log("getAvailableStudents called");
   try {
     const { classId } = req.params;
     const { department, semester, search, page = 1, limit = 20 } = req.query;
@@ -388,18 +390,27 @@ export const getAvailableStudents = async (req, res) => {
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
     
-    // Check schedule conflicts for each student (optional - can be done on demand)
+    // ✅ NOW THIS WILL WORK because checkStudentScheduleConflict is imported
     const studentsWithConflictStatus = await Promise.all(
       students.map(async (student) => {
-        const conflicts = await checkStudentScheduleConflict(
-          student._id, 
-          classData.schedule
-        );
-        return {
-          ...student.toObject(),
-          hasScheduleConflict: conflicts.length > 0,
-          conflictDetails: conflicts.length > 0 ? conflicts : undefined
-        };
+        try {
+          const conflicts = await checkStudentScheduleConflict(
+            student._id, 
+            classData.schedule
+          );
+          return {
+            ...student.toObject(),
+            hasScheduleConflict: conflicts.length > 0,
+            conflictDetails: conflicts.length > 0 ? conflicts : undefined
+          };
+        } catch (error) {
+          console.error(`Error checking conflicts for student ${student._id}:`, error);
+          return {
+            ...student.toObject(),
+            hasScheduleConflict: false,
+            conflictDetails: undefined
+          };
+        }
       })
     );
     
@@ -421,10 +432,12 @@ export const getAvailableStudents = async (req, res) => {
     });
     
   } catch (error) {
+    console.error("Full error:", error);
     console.error("Error getting available students:", error);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
+      stack: error.stack  
     });
   }
 };
