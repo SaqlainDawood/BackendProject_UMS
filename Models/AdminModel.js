@@ -11,21 +11,6 @@ const AdminSchema = mongoose.Schema({
              ref:'User',
               required:true,
     }
-    // email:{
-    //     type:String,
-    //     unique:true,
-    //     required:true,
-    //     lowercase:true,
-    // },
-    //  password:{
-    //     type:String,
-    //     required:true,
-    //  },
-    //  role:{
-    //     type:String,
-    //     default:'admin',
-    //  },
-
 },   {timestamps:true}
 )
 export default mongoose.model('Admin' , AdminSchema);

@@ -28,6 +28,33 @@ const marksheetStorage = new CloudinaryStorage({
 });
 export const uploadMarksheet = multer({ storage: marksheetStorage });
 
+// Activity files storage (for presentations and resources)
+const activityStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'Activity_Files',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf', 'ppt', 'pptx', 'doc', 'docx', 'zip'],
+  }
+});
+
+export const uploadActivityFiles = multer({ 
+  storage: activityStorage,
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB
+}).array('attachments', 10);
+
+// Assignment submissions storage
+const submissionStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'Student_Submissions',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx', 'zip'],
+  }
+});
+
+export const uploadSubmission = multer({ 
+  storage: submissionStorage,
+  limits: { fileSize: 50 * 1024 * 1024 }
+}).single('file');
 
 const facultyStorage = new CloudinaryStorage({
   cloudinary,
@@ -36,7 +63,6 @@ const facultyStorage = new CloudinaryStorage({
     allowed_formats:["jpg" , "jpeg" , "png"],
   }
 })
-
 export const uploadFacultyImage = multer({storage:facultyStorage});
 
 const coordinatorStorage = new CloudinaryStorage({
