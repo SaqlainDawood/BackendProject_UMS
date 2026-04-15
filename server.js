@@ -57,8 +57,8 @@ app.use('/api/admin/coordinator' , AdminCoordinator)
 app.use('/api/admin/faculty' , FacultyRoutes);
 // Faculty Portal Side Routes
 app.use('/api/faculty/portal' , FacultyPortal);
-app.use('/api/faculty/portal/activities', activityRoutes);
-app.use('/api/facult/portal/grading', gradingRoutes);
+app.use('/api/faculty/activities', activityRoutes);
+app.use('/api/facult/grading', gradingRoutes);
 // Student
 app.use('/api/students' , StudentRoutes);
 app.use('/api/students/attendance', StudentAttendance); 
