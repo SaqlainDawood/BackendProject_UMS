@@ -342,8 +342,12 @@ export const getClassStudents = async (req, res) => {
  * Get available students for enrollment (not yet enrolled)
  * GET /api/classes/:classId/available-students
  */
+/**
+ * Get available students for enrollment (not yet enrolled)
+ * GET /api/classes/:classId/available-students
+ */
 export const getAvailableStudents = async (req, res) => {
-    console.log("getAvailableStudents called");
+  console.log("getAvailableStudents called");
   try {
     const { classId } = req.params;
     const { department, semester, search, page = 1, limit = 20 } = req.query;
@@ -361,9 +365,17 @@ export const getAvailableStudents = async (req, res) => {
       .filter(s => s.status === 'enrolled')
       .map(s => s.student.toString());
     
-    // Build query for eligible students
+    // ✅ ONLY show students who are confirmed by admin
+    // These statuses mean the student has been fully approved
+    const confirmedStatuses = [
+      'approved',   // 7 students - approved by admin
+      'Active',     // 26 students - active status (note capital A)
+      'active' ,
+      'assign'     // Just in case of lowercase
+    ];
+    
     const query = {
-      status: { $in: ['active', 'approved'] },
+      status: { $in: confirmedStatuses },
       _id: { $nin: enrolledStudentIds }
     };
     
@@ -384,13 +396,19 @@ export const getAvailableStudents = async (req, res) => {
       ];
     }
     
+    console.log("Query status filter (confirmed only):", confirmedStatuses);
+    console.log("Total confirmed students matching query:", await Student.countDocuments(query));
+    
     const totalStudents = await Student.countDocuments(query);
     const students = await Student.find(query)
-      .select('firstName lastName rollNo registrationNo cnic phoneNo enrollment')
-      .skip((page - 1) * limit)
+      .select('firstName lastName rollNo registrationNo cnic phoneNo enrollment status')
+      .skip((parseInt(page) - 1) * parseInt(limit))
       .limit(parseInt(limit));
     
-    // ✅ NOW THIS WILL WORK because checkStudentScheduleConflict is imported
+    console.log("Students fetched:", students.length);
+    console.log("Students statuses:", students.map(s => ({ name: s.firstName, status: s.status })));
+    
+    // Check schedule conflicts
     const studentsWithConflictStatus = await Promise.all(
       students.map(async (student) => {
         try {
@@ -424,7 +442,7 @@ export const getAvailableStudents = async (req, res) => {
         students: studentsWithConflictStatus,
         pagination: {
           currentPage: parseInt(page),
-          totalPages: Math.ceil(totalStudents / limit),
+          totalPages: Math.ceil(totalStudents / parseInt(limit)),
           totalStudents: totalStudents,
           limit: parseInt(limit)
         }
@@ -432,7 +450,6 @@ export const getAvailableStudents = async (req, res) => {
     });
     
   } catch (error) {
-    console.error("Full error:", error);
     console.error("Error getting available students:", error);
     res.status(500).json({
       success: false,
@@ -441,7 +458,6 @@ export const getAvailableStudents = async (req, res) => {
     });
   }
 };
-
 /**
  * Get student's schedule (for viewing)
  * GET /api/students/:studentId/schedule
