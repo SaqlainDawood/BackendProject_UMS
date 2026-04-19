@@ -135,7 +135,14 @@ export const validateStudentEnrollment = async (studentId, classId, session = nu
       return { valid: false, reason: "Student not found" };
     }
     
-    if (student.status !== 'active' && student.status !== 'approved') {
+    // ✅ FIXED: Include all valid student statuses (case-insensitive)
+    const validStatuses = ['active', 'approved', 'Active', 'assign', 'unassigned'];
+    const isValidStatus = validStatuses.some(
+      status => student.status?.toLowerCase() === status.toLowerCase()
+    );
+    
+    if (!isValidStatus) {
+      console.log(`Student ${student.firstName} ${student.lastName} has invalid status: ${student.status}`);
       return { valid: false, reason: `Student is not active (Status: ${student.status})` };
     }
     
@@ -208,12 +215,6 @@ export const validateStudentEnrollment = async (studentId, classId, session = nu
         valid: false, 
         reason: `Credit hours limit exceeded. Current: ${totalCredits}, Adding: ${classData.creditHours}, Max: ${MAX_CREDITS}` 
       };
-    }
-    
-    // 7. Check prerequisite (optional - if you have prerequisites field)
-    if (classData.prerequisites && classData.prerequisites.length > 0) {
-      // You can add prerequisite checking logic here
-      // For now, skipping
     }
     
     return { 

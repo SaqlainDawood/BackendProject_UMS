@@ -136,6 +136,13 @@ export const enrollBulkStudents = async (req, res) => {
     for (const studentId of studentIds) {
       const validation = await validateStudentEnrollment(studentId, classId, session);
       
+      // ✅ Add debug logging
+      console.log(`Student ${studentId} validation:`, {
+        valid: validation.valid,
+        reason: validation.reason,
+        hasConflicts: !!validation.conflicts
+      });
+      
       if (validation.valid) {
         validStudents.push({
           student: studentId,
@@ -153,6 +160,12 @@ export const enrollBulkStudents = async (req, res) => {
           conflicts.push(...validation.conflicts);
         }
       }
+    }
+    
+    // ✅ Add summary log
+    console.log(`Validation complete: ${validStudents.length} valid, ${invalidStudents.length} invalid`);
+    if (invalidStudents.length > 0) {
+      console.log("Invalid students reasons:", invalidStudents.map(s => ({ id: s.studentId, reason: s.reason })));
     }
     
     // Add valid students to class
@@ -342,10 +355,6 @@ export const getClassStudents = async (req, res) => {
  * Get available students for enrollment (not yet enrolled)
  * GET /api/classes/:classId/available-students
  */
-/**
- * Get available students for enrollment (not yet enrolled)
- * GET /api/classes/:classId/available-students
- */
 export const getAvailableStudents = async (req, res) => {
   console.log("getAvailableStudents called");
   try {
@@ -366,12 +375,12 @@ export const getAvailableStudents = async (req, res) => {
       .map(s => s.student.toString());
     
     // ✅ ONLY show students who are confirmed by admin
-    // These statuses mean the student has been fully approved
     const confirmedStatuses = [
-      'approved',   // 7 students - approved by admin
-      'Active',     // 26 students - active status (note capital A)
-      'active' ,
-      'assign'     // Just in case of lowercase
+      'approved',
+      'Active',
+      'active',
+      'assign',
+      'unassigned'
     ];
     
     const query = {
@@ -397,7 +406,8 @@ export const getAvailableStudents = async (req, res) => {
     }
     
     console.log("Query status filter (confirmed only):", confirmedStatuses);
-    console.log("Total confirmed students matching query:", await Student.countDocuments(query));
+    const totalStudentsCount = await Student.countDocuments(query);
+    console.log("Total confirmed students matching query:", totalStudentsCount);
     
     const totalStudents = await Student.countDocuments(query);
     const students = await Student.find(query)
@@ -458,6 +468,7 @@ export const getAvailableStudents = async (req, res) => {
     });
   }
 };
+
 /**
  * Get student's schedule (for viewing)
  * GET /api/students/:studentId/schedule
@@ -595,9 +606,7 @@ export const getEnrollmentStats = async (req, res) => {
           totalEverEnrolled: classData.students.length
         },
         departmentBreakdown: departmentStats,
-        enrollmentTrend: {
-          // You can add historical trend data here
-        }
+        enrollmentTrend: {}
       }
     });
     
