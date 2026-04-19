@@ -174,31 +174,6 @@ export const facultyAdd = async (req, res) => {
       await existingUser.save();
       user = existingUser;
     }
-
-    // let user = await User.findOne({ email: normalizeEmail });
-    // if (!user) {
-    //   const salt = await bcrypt.genSalt(10);
-    //   const hashPassword = await bcrypt.hash(password, salt);
-    //   user = await User.create({
-    //     email: normalizeEmail,
-    //     password: hashPassword,
-    //     role: "faculty",
-    //     isActive: true,
-    //     lastLogin: new Date(),
-    //   });
-    // }
-    // else{
-    //    if (user.role === "faculty") {
-    //     return res.status(400).json({
-    //       success: false,
-    //       message: "Faculty already exists with this email",
-    //     });
-    //   }
-    //   user.role = "faculty";
-    //   user.password = user.password || (await bcrypt.hash(password, 10));
-    //   await user.save();
-    // }
-
     const newFaculty = new Faculty({
       user: user._id,
       employeeID,
@@ -227,10 +202,32 @@ export const facultyAdd = async (req, res) => {
     });
 
     await newFaculty.save();
+let emailSent = false;
+    let emailError = null;
 
+    try {
+      await sendFacultyEmail({
+        to: normalizeEmail,
+        facultyName: `${firstName} ${lastName}`,
+        employeeID: employeeID,
+        department: department,
+        designation: designation,
+        userName: userName,
+        password: password, // Plain text password
+        joiningDate: joiningDate
+      });
+      emailSent = true;
+      console.log(" Faculty credentials email sent successfully to:", normalizeEmail);
+    } catch (emailErr) {
+      emailError = emailErr.message;
+      console.error(" Failed to send faculty email:", emailErr.message);
+      // Don't fail the registration - just log the error
+    }
     res.status(201).json({
-      success: true,
+       success: true,
       message: "Faculty Member Saved Successfully",
+      emailSent: emailSent,
+      emailError: emailError,
       data: {
         id: newFaculty._id,
         employeeID,
@@ -271,8 +268,16 @@ export const facultyAdd = async (req, res) => {
 export const sendFacultyCredentials = async (req, res) => {
   try {
     const data = req.body;
-    // 2. Send email with HTML
+    
+    // Validate required fields
+    if (!data.to || !data.facultyName || !data.userName || !data.password) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields: to, facultyName, userName, password"
+      });
+    }
 
+    // Send email using Brevo API
     await sendFacultyEmail({ ...data });
 
     res.json({
