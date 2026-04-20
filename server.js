@@ -16,6 +16,7 @@ import StudentAttendance from './Routes/StudentPortal/studentRoutes.js'
 import studentEnrollmentRoutes from './Routes/AdminClassRoutes/studentEnrollmentRoutes.js'
 import activityRoutes from './Routes/TPRoutes/activityRoutes.js'
 import gradingRoutes from './Routes/TPRoutes/gradingRoutes.js'
+import studentActivityRoutes from './Routes/TPRoutes/activityRoutes.js';
 dotenv.config();
 
 const app = express();
@@ -61,6 +62,7 @@ app.use('/api/faculty/activities', activityRoutes);
 app.use('/api/facult/grading', gradingRoutes);
 // Student
 app.use('/api/students' , StudentRoutes);
+app.use('/api/student', studentActivityRoutes);
 app.use('/api/students/attendance', StudentAttendance); 
 // Classes Assign for admin side
 app.use('/api/admin/classes', classRoute);
