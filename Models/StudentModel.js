@@ -17,6 +17,7 @@ const EducationSchema = new mongoose.Schema(
   },
   { _id: false }
 );
+
 const FamilySchema = new mongoose.Schema(
   {
     fatherName: { type: String },
@@ -41,10 +42,10 @@ const EnrollmentSchema = new mongoose.Schema(
 );
 
 const StudentSchema = new mongoose.Schema({
-  user:{
-    type:mongoose.Schema.Types.ObjectId,
-    ref:'User',
-    required:true,
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
   },
   // Step 1: Personal Info
   firstName: { type: String, required: true },
@@ -70,13 +71,14 @@ const StudentSchema = new mongoose.Schema({
   nationality: { type: String, required: true },
   status: {
     type: String,
-   enum: ["draft", "pending", "approved", "unassigned", "assign", "rejected", "active","suspend"],
-default: "pending",
+    enum: ["draft", "pending", "approved", "unassigned", "assign", "rejected", "active", "suspend"],
+    default: "draft", // Changed from "pending" to "draft"
   },
   rejectionReason: { type: String, default: null },
   rollNo: { type: String, default: null },
   section: { type: String, default: "" },
   registrationNo: { type: String, default: null },
+  
   // profile image
   profileImage: {
     url: { type: String },
@@ -93,6 +95,7 @@ default: "pending",
 
   // Step 4: Enrollment
   enrollment: EnrollmentSchema,
+  
   gpa: {
     type: [
       {
@@ -113,7 +116,30 @@ default: "pending",
     photo: { type: Boolean, default: true },
     domicile: { type: Boolean, default: true },
   },
+  
+  // Draft management fields
+  isComplete: {
+    type: Boolean,
+    default: false,
+  },
+  lastStepCompleted: {
+    type: Number,
+    default: 0,
+  },
+  draftExpiresAt: {
+    type: Date,
+    default: () => new Date(+new Date() + 7 * 24 * 60 * 60 * 1000), // 7 days
+  },
+  temporaryFiles: [{
+    url: { type: String },
+    public_id: { type: String },
+    type: { type: String }, // 'profile' or 'marksheet'
+  }],
+  
   createdAt: { type: Date, default: Date.now },
 });
+
+// Add TTL index for auto-deleting old drafts
+StudentSchema.index({ draftExpiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export default mongoose.model("Student", StudentSchema);
