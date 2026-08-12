@@ -18,8 +18,11 @@ const scheduleSchema = new mongoose.Schema({
         required:true
     }
 });
-const classSchema = new mongoose.Schema({
-  
+
+
+
+
+const classSchema = new mongoose.Schema({  
     className:{
         type:String,
         required:true,

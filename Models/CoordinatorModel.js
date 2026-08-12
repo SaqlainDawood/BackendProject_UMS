@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 
 const coordinatorSchema = new mongoose.Schema({
   // ========== REFERENCE TO USER MODEL ==========
+  
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
