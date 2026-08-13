@@ -17,6 +17,7 @@ import studentEnrollmentRoutes from './Routes/AdminClassRoutes/studentEnrollment
 import activityRoutes from './Routes/TPRoutes/activityRoutes.js'
 import gradingRoutes from './Routes/TPRoutes/gradingRoutes.js'
 import studentActivityRoutes from './Routes/StudentPortal/studentActivityRoutes.js';
+import EnrollmentRoutes from './Routes/students_Enrollments/routes.js';
 dotenv.config();
 
 const app = express();
@@ -71,6 +72,8 @@ app.use('/api/admin/classes',studentEnrollmentRoutes);
 app.use('/api/admin/attendance' , adminAttendance);
 // Facutly Portal Attendance
 app.use('/api/faculty/portal' , FacultyPortalAttendance)
+
+app.use('/api', EnrollmentRoutes);
 
 
 app.listen(PORT,()=>{
