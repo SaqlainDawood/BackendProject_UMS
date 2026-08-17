@@ -246,9 +246,9 @@ coordinatorSchema.pre(/^find/, function(next) {
 });
 
 // ========== ESSENTIAL INDEXES ==========
-coordinatorSchema.index({ coordId: 1 }, { unique: true });
-coordinatorSchema.index({ cnic: 1 }, { unique: true });
-coordinatorSchema.index({ user: 1 }, { unique: true });
+// The fields `coordId`, `cnic`, and `user` are declared with `unique: true`
+// on their schema paths above; explicit unique indexes here are redundant
+// and cause duplicate-index warnings, so they are intentionally omitted.
 coordinatorSchema.index({ department: 1 });
 coordinatorSchema.index({ status: 1 });
 

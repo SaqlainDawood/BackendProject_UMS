@@ -24,8 +24,19 @@ const app = express();
 const PORT = process.env.PORT || 8000;
 
 
-// Connect DB
-ConnectDB();
+// Connect DB and start server after successful DB connection
+// This prevents request handlers from running before mongoose is connected
+(async () => {
+    try {
+        await ConnectDB();
+        app.listen(PORT, () => {
+            console.log(`Server is Started at http://localhost:${PORT}`);
+        });
+    } catch (err) {
+        console.error('Failed to connect to DB, exiting...', err?.message || err);
+        process.exit(1);
+    }
+})();
 app.use(cors({
     origin:[
          "https://studentteacherportal-j7yl2fvuj-saqlain-dawoods-projects.vercel.app",
@@ -76,6 +87,4 @@ app.use('/api/faculty/portal' , FacultyPortalAttendance)
 app.use('/api', EnrollmentRoutes);
 
 
-app.listen(PORT,()=>{
-    console.log(`Server is Started at http://localhost:${PORT}`);
-})
+// server is started after DB connection above

@@ -129,7 +129,8 @@ const classSchema = new mongoose.Schema({
 classSchema.index({department:1, semester:1 ,isActive:1 });
 classSchema.index({'teachers.teacher':1});
 classSchema.index({'students.student':1});
-classSchema.index({classCode:1},{unique:true});
+// `classCode` is already declared `unique: true` on the field above,
+// so no separate unique index is needed here.
 
 classSchema.pre('save', function(next){
  this.enrolledCount = this.students.filter(s => s.status === 'enrolled').length;

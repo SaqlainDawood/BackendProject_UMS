@@ -1,8 +1,10 @@
+import mongoose from 'mongoose';
 import Student from "../../Models/StudentModel.js";
 import User from "../../Models/userModel.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import cloudinary from "../../Cloudinary/CloudConnect.js";
+
 // export const step1Create = async (req, res) => {
 //   try {
 //     const {
@@ -344,18 +346,18 @@ const cleanupMultipleFiles = async (files) => {
 };
 
 // Main atomic save function
+// Main save function — NO transactions/sessions (works on standalone MongoDB, no replica set needed)
 export const saveStudentStep = async (req, res) => {
-  let session = null;
   const uploadedFiles = []; // Track uploaded files for rollback
-  
+
   try {
     const step = parseInt(req.params.step);
     let stepData = { ...req.body };
-    
+
     // Remove studentId from data if present
     const studentId = stepData.studentId;
     delete stepData.studentId;
-    
+
     // Validate step data
     if (!validateStepData(step, stepData)) {
       return res.status(400).json({
@@ -363,26 +365,22 @@ export const saveStudentStep = async (req, res) => {
         message: `Step ${step} validation failed. Please fill all required fields.`
       });
     }
-    
-    // Start MongoDB session for transaction
-    session = await mongoose.startSession();
-    session.startTransaction();
-    
+
     let student;
     let isNewStudent = false;
-    
+
     // Find or create student
     if (studentId) {
-      student = await Student.findById(studentId).session(session);
+      student = await Student.findById(studentId);
     }
-    
+
     if (!student) {
       // Check if CNIC already exists
-      const existingStudent = await Student.findOne({ cnic: stepData.cnic }).session(session);
+      const existingStudent = await Student.findOne({ cnic: stepData.cnic });
       if (existingStudent && !studentId) {
         throw new Error("CNIC already registered");
       }
-      
+
       // Create temporary user
       const tempUser = new User({
         email: stepData.email ? stepData.email.toLowerCase().trim() : `${Date.now()}@temp.com`,
@@ -390,8 +388,8 @@ export const saveStudentStep = async (req, res) => {
         role: "student",
         isTemporary: true
       });
-      await tempUser.save({ session });
-      
+      await tempUser.save();
+
       student = new Student({
         user: tempUser._id,
         status: "draft",
@@ -400,7 +398,7 @@ export const saveStudentStep = async (req, res) => {
       });
       isNewStudent = true;
     }
-    
+
     // Update based on step
     switch (step) {
       case 1:
@@ -416,7 +414,7 @@ export const saveStudentStep = async (req, res) => {
             public_id: req.file.filename,
           };
         }
-        
+
         // Update student with step 1 data
         Object.assign(student, {
           firstName: stepData.firstName,
@@ -435,19 +433,19 @@ export const saveStudentStep = async (req, res) => {
           domicile: stepData.domicile,
           profileImage: stepData.profileImage || student.profileImage,
         });
-        
+
         // Update temporary user email if provided
         if (stepData.email && student.user) {
-          const user = await User.findById(student.user).session(session);
+          const user = await User.findById(student.user);
           if (user && user.isTemporary) {
             user.email = stepData.email.toLowerCase().trim();
-            await user.save({ session });
+            await user.save();
           }
         }
-        
+
         student.lastStepCompleted = 1;
         break;
-        
+
       case 2:
         student.family = {
           fatherName: stepData.fatherName,
@@ -457,7 +455,7 @@ export const saveStudentStep = async (req, res) => {
         };
         student.lastStepCompleted = 2;
         break;
-        
+
       case 3:
         // Parse education list
         let educationList = [];
@@ -469,7 +467,7 @@ export const saveStudentStep = async (req, res) => {
         } catch (err) {
           throw new Error("Invalid education list format");
         }
-        
+
         // Handle marksheet uploads
         const filesMap = {};
         if (req.files && Array.isArray(req.files) && req.files.length > 0) {
@@ -490,7 +488,7 @@ export const saveStudentStep = async (req, res) => {
             }
           });
         }
-        
+
         // Map files to education entries
         const finalEducationList = educationList.map((edu, index) => ({
           ...edu,
@@ -498,11 +496,11 @@ export const saveStudentStep = async (req, res) => {
           obtainMarks: Number(edu.obtainMarks),
           markSheet: filesMap[index] || edu.markSheet || { url: null, public_id: null }
         }));
-        
+
         student.academic = { educationList: finalEducationList };
         student.lastStepCompleted = 3;
         break;
-        
+
       case 4:
         student.enrollment = {
           program: stepData.program,
@@ -518,19 +516,16 @@ export const saveStudentStep = async (req, res) => {
         student.status = "pending"; // Ready for approval
         break;
     }
-    
+
     // Save student
-    await student.save({ session });
-    
+    await student.save();
+
     // Store temporary files info for cleanup if needed
     if (uploadedFiles.length > 0) {
       student.temporaryFiles = uploadedFiles;
-      await student.save({ session });
+      await student.save();
     }
-    
-    // Commit transaction
-    await session.commitTransaction();
-    
+
     return res.status(200).json({
       success: true,
       message: `Step ${step} saved successfully`,
@@ -538,26 +533,17 @@ export const saveStudentStep = async (req, res) => {
       isComplete: student.isComplete,
       lastStepCompleted: student.lastStepCompleted
     });
-    
+
   } catch (error) {
-    // Rollback transaction
-    if (session) {
-      await session.abortTransaction();
-    }
-    
-    // Clean up uploaded files
+    // Clean up uploaded files on failure
     await cleanupMultipleFiles(uploadedFiles);
-    
+
     console.error(`Step ${req.params.step} error:`, error);
-    
+
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to save step"
     });
-  } finally {
-    if (session) {
-      session.endSession();
-    }
   }
 };
 
