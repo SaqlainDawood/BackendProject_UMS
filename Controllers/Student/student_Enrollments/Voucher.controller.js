@@ -1,10 +1,10 @@
 import Voucher from "../../../Models/Voucher.js";
-import VoucherItem from "../../../Models/VoucherItem.js";
+import VoucherItem from "../../../Models/Voucheritem.js";
 import Enrollment from "../../../Models/Enrollment.js";
 import Batch from "../../../Models/Batch.js";
-import TuitionFee from "../../../Models/TuitionFee.js";
-import FeeType from "../../../Models/FeeType.js";
-import FineType from "../../../Models/FineType.js";
+import TuitionFee from "../../../Models/Tuitionfee.js";
+import FeeType from "../../../Models/Feetype.js";
+import FineType from "../../../Models/Finetype.js";
 import crypto from "crypto";
 
 function cleanErrorMessage(err) {

@@ -1,4 +1,4 @@
-import FeeType from "../../../Models/FeeType.js";
+import FeeType from "../../../Models/Feetype.js";
 
 function cleanErrorMessage(err) {
   if (err.name === "CastError") return `Invalid ${err.path} — please provide a valid ID`;

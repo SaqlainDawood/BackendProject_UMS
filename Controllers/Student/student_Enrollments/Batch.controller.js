@@ -1,7 +1,7 @@
 import Batch from "../../../Models/Batch.js";
-import BatchSemesterLog from "../../../Models/BatchSemesterLog.js";
+import BatchSemesterLog from "../../../Models/Batchsemesterlog.js";
 import Department from "../../../Models/Department.js";
-import DegreeClass from "../../../Models/DegreeClass.js";
+import DegreeClass from "../../../Models/Degreeclass.js";
 import Shift from "../../../Models/Shift.js";
 import Session from "../../../Models/Session.js";
 

@@ -5,7 +5,7 @@ import {
   getFineTypeById,
   updateFineType,
   deleteFineType,
-} from "../../Controllers/Student/student_Enrollments/FineType.controller.js";
+} from "../../Controllers/Student/student_Enrollments/Finetype.controller.js";
 
 const router = express.Router();
 

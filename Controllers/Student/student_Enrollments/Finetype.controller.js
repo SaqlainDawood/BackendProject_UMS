@@ -1,4 +1,4 @@
-import FineType from "../../../Models/FineType.js";
+import FineType from "../../../Models/Finetype.js";
 
 function cleanErrorMessage(err) {
   if (err.name === "CastError") return `Invalid ${err.path} — please provide a valid ID`;

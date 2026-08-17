@@ -1,5 +1,5 @@
 import Shift from "../../../Models/Shift.js";
-import DegreeClass from "../../../Models/DegreeClass.js";
+import DegreeClass from "../../../Models/Degreeclass.js";
 
 // CREATE
 export const createShift = async (req, res) => {

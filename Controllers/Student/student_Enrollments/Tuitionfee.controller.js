@@ -1,6 +1,6 @@
-import TuitionFee from "../../../Models/TuitionFee.js";
+import TuitionFee from "../../../Models/Tuitionfee.js";
 import Department from "../../../Models/Department.js";
-import DegreeClass from "../../../Models/DegreeClass.js";
+import DegreeClass from "../../../Models/Degreeclass.js";
 import Shift from "../../../Models/Shift.js";
 
 function cleanErrorMessage(err) {
