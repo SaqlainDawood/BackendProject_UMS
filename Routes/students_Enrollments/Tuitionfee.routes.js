@@ -5,7 +5,7 @@ import {
   getTuitionFeeById,
   updateTuitionFee,
   deleteTuitionFee,
-} from "../../Controllers/Student/student_Enrollments/TuitionFee.controller.js";
+} from "../../Controllers/Student/student_Enrollments/Tuitionfee.controller.js";
 
 const router = express.Router();
 
