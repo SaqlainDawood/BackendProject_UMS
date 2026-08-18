@@ -19,6 +19,40 @@ function cleanErrorMessage(err) {
   return err.message || "Something went wrong, please try again";
 }
 
+// helper - startDate ordering se agli academic session dhoondta hai
+// (sirf year compare nahi karta — Spring 2026 -> Fall 2026 -> Spring 2027 -> Fall 2027 sahi sequence mein chalta hai)
+async function findNextSession(currentSession) {
+  if (!currentSession) return null;
+  return Session.findOne({ startDate: { $gt: currentSession.startDate } }).sort({ startDate: 1 });
+}
+
+// GET /sessions-lookup/next?currentSessionId=xxx — standalone helper endpoint
+export const getNextSession = async (req, res) => {
+  try {
+    const { currentSessionId } = req.query;
+    if (!currentSessionId) {
+      return res.status(400).json({ success: false, message: "currentSessionId is required" });
+    }
+
+    const currentSession = await Session.findById(currentSessionId);
+    if (!currentSession) {
+      return res.status(404).json({ success: false, message: "Session not found" });
+    }
+
+    const nextSession = await findNextSession(currentSession);
+    if (!nextSession) {
+      return res.status(404).json({
+        success: false,
+        message: "No next session found. Please create the next academic session first.",
+      });
+    }
+
+    res.json({ success: true, data: nextSession });
+  } catch (err) {
+    res.status(400).json({ success: false, message: cleanErrorMessage(err) });
+  }
+};
+
 // CREATE
 export const createBatch = async (req, res) => {
   try {
@@ -133,6 +167,15 @@ export const getBatchSemesters = async (req, res) => {
       .populate("sessionId", "name term year")
       .sort({ semester: 1 });
 
+    // agli session ka preview — jo "advance" call karne pe automatically use hogi
+    let nextExpectedSession = null;
+    if (batch.status !== "completed") {
+      const lastLog = logs[logs.length - 1];
+      if (lastLog?.sessionId) {
+        nextExpectedSession = await findNextSession(lastLog.sessionId);
+      }
+    }
+
     res.json({
       success: true,
       data: {
@@ -141,6 +184,7 @@ export const getBatchSemesters = async (req, res) => {
         pending,
         status: batch.status,
         history: logs,
+        nextExpectedSession,
       },
     });
   } catch (err) {
@@ -151,16 +195,6 @@ export const getBatchSemesters = async (req, res) => {
 // ADVANCE SEMESTER
 export const advanceBatch = async (req, res) => {
   try {
-    const { sessionId } = req.body;
-    if (!sessionId) {
-      return res.status(400).json({ success: false, message: "sessionId is required" });
-    }
-
-    const session = await Session.findById(sessionId);
-    if (!session) {
-      return res.status(400).json({ success: false, message: "Invalid sessionId" });
-    }
-
     const batch = await Batch.findById(req.params.id);
     if (!batch) {
       return res.status(404).json({ success: false, message: "Batch not found" });
@@ -176,10 +210,40 @@ export const advanceBatch = async (req, res) => {
       return res.json({ success: true, message: "Batch marked as completed", data: batch });
     }
 
-    batch.currentSemester += 1;
-    if (batch.currentSemester === batch.totalSemesters) {
-      // last semester shuru hua — abhi bhi "ongoing" rahega jab tak explicitly complete na ho
+    let { sessionId } = req.body;
+
+    if (sessionId) {
+      // agar manually di gayi hai, to sirf validate karo ke exist karti hai
+      const session = await Session.findById(sessionId);
+      if (!session) {
+        return res.status(400).json({ success: false, message: "Invalid sessionId" });
+      }
+    } else {
+      // sessionId nahi di gayi — khud academic ordering (startDate) se agli session dhoondo
+      const lastLog = await BatchSemesterLog.findOne({ batchId: batch._id })
+        .sort({ createdAt: -1 })
+        .populate("sessionId");
+
+      const currentSession = lastLog?.sessionId;
+      if (!currentSession) {
+        return res.status(400).json({
+          success: false,
+          message: "Could not determine current session for this batch. Please provide sessionId manually.",
+        });
+      }
+
+      const nextSession = await findNextSession(currentSession);
+      if (!nextSession) {
+        return res.status(400).json({
+          success: false,
+          message: `No academic session found after "${currentSession.name}". Please create the next session first, or provide sessionId manually.`,
+        });
+      }
+
+      sessionId = nextSession._id;
     }
+
+    batch.currentSemester += 1;
     await batch.save();
 
     // duplicate log na bane isliye upsert
@@ -189,9 +253,11 @@ export const advanceBatch = async (req, res) => {
       { upsert: true, new: true }
     );
 
+    const usedSession = await Session.findById(sessionId).select("name term year");
+
     res.json({
       success: true,
-      message: `Batch advanced to semester ${batch.currentSemester}`,
+      message: `Batch advanced to semester ${batch.currentSemester} (${usedSession?.name || ""})`,
       data: batch,
     });
   } catch (err) {
