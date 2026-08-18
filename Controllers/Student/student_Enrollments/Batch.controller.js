@@ -10,12 +10,16 @@ import Session from "../../../Models/Session.js";
    CLEAN ERROR
 ========================================================= */
 
-function cleanErrorMessage(err) {
+function cleanErrorMessage(err, context = {}) {
   if (err.name === "CastError") {
     return `Invalid ${err.path} — please provide a valid ID`;
   }
 
   if (err.code === 11000) {
+    if (context.batchName) {
+      return `A batch already exists for ${context.batchName}`;
+    }
+
     return "A batch already exists for this department, class, shift and starting session";
   }
 
@@ -101,6 +105,8 @@ export const getNextSession = async (req, res) => {
 ========================================================= */
 
 export const createBatch = async (req, res) => {
+  let batchNameForError = null;
+
   try {
     const {
       departmentId,
@@ -162,6 +168,11 @@ export const createBatch = async (req, res) => {
         success: false,
         message: "Invalid startSessionId",
       });
+    }
+
+    // used only to build a clean duplicate-key message in the catch block below
+    if (degreeClass?.code && session?.year) {
+      batchNameForError = `${degreeClass.code}-${session.year}`;
     }
 
     /* Department -> Degree Class */
@@ -254,7 +265,7 @@ export const createBatch = async (req, res) => {
   } catch (err) {
     return res.status(400).json({
       success: false,
-      message: cleanErrorMessage(err),
+      message: cleanErrorMessage(err, { batchName: batchNameForError }),
     });
   }
 };

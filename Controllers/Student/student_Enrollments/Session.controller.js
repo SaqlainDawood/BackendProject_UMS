@@ -1,4 +1,3 @@
-
 import Session from "../../../Models/Session.js";
 import DegreeClass from "../../../Models/Degreeclass.js";
 
@@ -37,28 +36,33 @@ export const generateSessionsForDegreeClass =
       } = req.body;
 
       if (
-        !degreeClassId ||
         !springStartDate ||
         !semesterMonths
       ) {
         return res.status(400).json({
           success: false,
           message:
-            "degreeClassId, springStartDate and semesterMonths are required",
+            "springStartDate and semesterMonths are required",
         });
       }
 
-      const degreeClass =
-        await DegreeClass.findById(
-          degreeClassId
-        );
+      // Sessions are university-wide, not tied to a Degree Class — degreeClassId
+      // is accepted for backward compatibility but is optional and unused for
+      // storage. If it IS provided, we still validate it so a bad id fails loudly
+      // instead of silently generating sessions for a class that doesn't exist.
+      if (degreeClassId) {
+        const degreeClass =
+          await DegreeClass.findById(
+            degreeClassId
+          );
 
-      if (!degreeClass) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid degreeClassId",
-        });
+        if (!degreeClass) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Invalid degreeClassId",
+          });
+        }
       }
 
       const months =
