@@ -1,3 +1,5 @@
+import express from "express";
+
 import {
   createBatch,
   getBatches,
@@ -11,13 +13,27 @@ import {
 
 const router = express.Router();
 
+/* CREATE */
 router.post("/", createBatch);
-router.get("/", getBatches);                        // ?departmentId=&degreeClassId=&shiftId=&status=
-router.get("/next-session", getNextSession);          // ?currentSessionId=xxx  ⚠️ /:id se PEHLE
-router.get("/:id", getBatchById);
-router.get("/:id/semesters", getBatchSemesters);      // completed / current / pending + nextExpectedSession
-router.put("/:id/advance", advanceBatch);             // { sessionId } ← ab OPTIONAL hai
-router.put("/:id", updateBatch);
-router.delete("/:id", deleteBatch);
+
+/* READ ALL */
+router.get("/", getBatches);
+router.get( "/next-session", getNextSession
+);
+router.get( "/:id", getBatchById
+);
+
+router.get(  "/:id/semesters", getBatchSemesters
+);
+
+router.put( "/:id/advance", advanceBatch
+);
+
+/* UPDATE */
+router.put( "/:id", updateBatch
+);
+/* DELETE */
+router.delete("/:id", deleteBatch
+);
 
 export default router;

@@ -1,8 +1,12 @@
+
 import express from "express";
+
 import {
   createSession,
+  generateSessionsForDegreeClass,
   getSessions,
   getCurrentSession,
+  getSessionStatus,
   getSessionById,
   updateSession,
   deleteSession,
@@ -10,11 +14,46 @@ import {
 
 const router = express.Router();
 
+/* CREATE SINGLE */
 router.post("/", createSession);
-router.get("/", getSessions);              // ?term=Fall&year=2026
-router.get("/current", getCurrentSession);  // ⚠️ /:id se PEHLE
-router.get("/:id", getSessionById);
-router.put("/:id", updateSession);
-router.delete("/:id", deleteSession);  
+
+/* GENERATE SPRING + FALL */
+router.post(
+  "/generate",
+  generateSessionsForDegreeClass
+);
+
+/* GET ALL */
+router.get("/", getSessions);
+
+/* CURRENT */
+router.get(
+  "/current",
+  getCurrentSession
+);
+
+/* STATUS */
+router.get(
+  "/status",
+  getSessionStatus
+);
+
+/* SINGLE */
+router.get(
+  "/:id",
+  getSessionById
+);
+
+/* UPDATE */
+router.put(
+  "/:id",
+  updateSession
+);
+
+/* DELETE */
+router.delete(
+  "/:id",
+  deleteSession
+);
 
 export default router;
