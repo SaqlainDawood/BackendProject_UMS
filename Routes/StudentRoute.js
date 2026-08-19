@@ -9,6 +9,7 @@ import {
   // step3Update,
   // step4Update,
   getStudent,
+  getAllStudents,
   studentLogin,
   StudentCredentials,
   studentProfile
@@ -78,6 +79,9 @@ router.post("/set-credentials", StudentCredentials);
 router.post("/login", studentLogin);
 
 router.get("/me", protect, studentProfile);
+
+// Get all students (list/filter) — MUST be before /:id
+router.get("/", getAllStudents);
 
 // Get student:
 router.get("/:id", protect, getStudent);
