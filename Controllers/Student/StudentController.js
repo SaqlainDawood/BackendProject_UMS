@@ -4,6 +4,7 @@ import User from "../../Models/userModel.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import cloudinary from "../../Cloudinary/CloudConnect.js";
+
 // export const step1Create = async (req, res) => {
 //   try {
 //     const {
@@ -307,6 +308,7 @@ import cloudinary from "../../Cloudinary/CloudConnect.js";
 //     });
 //   }
 // };
+
 const validateStepData = (step, data) => {
   switch (step) {
     case 1:

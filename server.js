@@ -86,5 +86,12 @@ app.use('/api/faculty/portal' , FacultyPortalAttendance)
 
 app.use('/api', EnrollmentRoutes);
 
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    message: "Server is awake",
+    timestamp: new Date().toISOString(),
+  });
+});
 
 // server is started after DB connection above
