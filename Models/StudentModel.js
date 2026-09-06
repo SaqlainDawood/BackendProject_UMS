@@ -31,8 +31,12 @@ const FamilySchema = new mongoose.Schema(
 const EnrollmentSchema = new mongoose.Schema(
   {
     program: { type: String, required: true },
-    semester: { type: String, required: true },
-    session: { type: String, required: true },
+    // semester and session are NOT known at Step 4 anymore — a Batch (and
+    // its startSessionId/currentSemester) is only assigned later, at
+    // admin/coordinator approval time. So these stay optional here and
+    // get filled in by approveStudents once a batch is matched.
+    semester: { type: String, default: "" },
+    session: { type: String, default: "" },
     department: { type: String, required: true },
     shift: { type: String, required: true },
     campus: { type: String, required: true },
