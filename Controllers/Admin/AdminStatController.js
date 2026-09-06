@@ -229,7 +229,12 @@ export const approveStudents = async (req, res) => {
       student: {
         id: student._id,
         name: `${student.firstName} ${student.lastName}`,
-        email: email || "Not found"
+        email: email || "Not found",
+        status: student.status,
+        batchId: student.batchId,
+        degreeClassId: student.degreeClassId,
+        shiftId: student.shiftId,
+        enrollment: student.enrollment,
       },
     });
 
