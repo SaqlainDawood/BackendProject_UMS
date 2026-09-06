@@ -2,6 +2,8 @@ import Student from "../../Models/StudentModel.js";
 import Faculty from "../../Models/TeacherModel.js";
 import { sendApprovalEmail } from "../../utils/emailService.js";
 import User from '../../Models/userModel.js'
+import Batch from "../../Models/Batch.js";
+import Enrollment from "../../Models/Enrollment.js";
 // in the dashboard total students check.
 export const getTotalStudents = async (req, res) => {
   try {
@@ -69,11 +71,57 @@ export const getPendingStudents = async (req, res) => {
 // Admin Approve Students
 export const approveStudents = async (req, res) => {
   console.log(" Approve Students API called for ID:", req.params.id);
-  
+
   try {
+    const existingStudent = await Student.findById(req.params.id);
+
+    if (!existingStudent) {
+      return res.status(400).json({
+        success: false,
+        message: "Student not found",
+      });
+    }
+
+    if (!existingStudent.degreeClassId || !existingStudent.shiftId) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "This student has not completed Step 4 (degree class / shift) yet, cannot approve.",
+      });
+    }
+
+    /*
+      Batch was NEVER selected by the student during enrollment (Step 4).
+      At approval time, find the appropriate active Batch that matches
+      the student's chosen degreeClassId + shiftId — same DegreeClass -> Shift -> Batch
+      relationship the Batch API already follows. The most recently
+      created active batch for that class+shift is used (i.e. the batch
+      for the current intake).
+    */
+    const matchingBatch = await Batch.findOne({
+      degreeClassId: existingStudent.degreeClassId,
+      shiftId: existingStudent.shiftId,
+      status: "active",
+    })
+      .sort({ createdAt: -1 })
+      .populate("startSessionId", "name");
+
+    if (!matchingBatch) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "No active batch found for this student's degree class and shift. Please create a batch first.",
+      });
+    }
+
     const student = await Student.findByIdAndUpdate(
       req.params.id,
-      { status: "approved" },
+      {
+        status: "approved",
+        batchId: matchingBatch._id,
+        "enrollment.semester": String(matchingBatch.currentSemester),
+        "enrollment.session": matchingBatch.startSessionId?.name || "",
+      },
       { new: true }
     ).populate("user", "email");
 
@@ -83,6 +131,21 @@ export const approveStudents = async (req, res) => {
         message: "Student not found",
       });
     }
+
+    // Real Enrollment record — created only now, since the Batch is only
+    // known at approval time (upsert so re-approving doesn't throw a
+    // duplicate-key error).
+    await Enrollment.findOneAndUpdate(
+      { studentId: student._id, batchId: matchingBatch._id },
+      {
+        $setOnInsert: {
+          studentId: student._id,
+          batchId: matchingBatch._id,
+          status: "active",
+        },
+      },
+      { upsert: true }
+    );
 
     // ===== DEBUG: Log the entire student object to see what's available =====
     console.log(" Full Student Object:");

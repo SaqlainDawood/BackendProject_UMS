@@ -4,6 +4,12 @@ import User from "../../Models/userModel.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import cloudinary from "../../Cloudinary/CloudConnect.js";
+import Batch from "../../Models/Batch.js";
+import Enrollment from "../../Models/Enrollment.js";
+import Campus from "../../Models/Campus.js";
+import Department from "../../Models/Department.js";
+import DegreeClass from "../../Models/Degreeclass.js";
+import Shift from "../../Models/Shift.js";
 
 // export const step1Create = async (req, res) => {
 //   try {
@@ -318,7 +324,7 @@ const validateStepData = (step, data) => {
     case 3:
       return data.educationList && data.educationList.length > 0;
     case 4:
-      return data.program && data.department && data.session;
+      return data.degreeClassId && data.shiftId;
     default:
       return false;
   }
@@ -506,20 +512,78 @@ export const saveStudentStep = async (req, res) => {
         student.lastStepCompleted = 3;
         break;
         
-      case 4:
+      case 4: {
+        // Student sirf Degree Class aur Shift select karta hai.
+        // Department aur Campus khud degreeClassId se derive hote hain
+        // (bilkul Batch API ki tarah) — frontend se nahi liye jaate.
+        // Batch is step par assign NAHI hoti — wo Admin/Coordinator ke
+        // approval ke waqt (approveStudents) automatically assign hoti hai.
+        const { degreeClassId, shiftId } = stepData;
+
+        if (!mongoose.Types.ObjectId.isValid(degreeClassId)) {
+          throw new Error("Invalid degreeClassId selected");
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(shiftId)) {
+          throw new Error("Invalid shiftId selected");
+        }
+
+        const [degreeClass, shift] = await Promise.all([
+          DegreeClass.findById(degreeClassId).session(session),
+          Shift.findById(shiftId).session(session),
+        ]);
+
+        if (!degreeClass) throw new Error("Invalid degreeClassId");
+        if (!shift) throw new Error("Invalid shiftId");
+
+        if (String(shift.degreeClassId) !== String(degreeClassId)) {
+          throw new Error(
+            "Selected shift does not belong to the selected degree class"
+          );
+        }
+
+        // Department -> internally derived from Degree Class
+        const departmentId =
+          degreeClass.departmentId?._id || degreeClass.departmentId;
+
+        const department = await Department.findById(departmentId).session(
+          session
+        );
+
+        if (!department) {
+          throw new Error(
+            "Could not determine department for the selected degree class"
+          );
+        }
+
+        // Campus -> internally derived from Department
+        const campusId = department.campusId?._id || department.campusId;
+        const campus = campusId
+          ? await Campus.findById(campusId).session(session)
+          : null;
+
+        // Denormalized snapshot — session/semester stay empty for now,
+        // since no Batch is assigned yet at this step.
         student.enrollment = {
-          program: stepData.program,
-          semester: stepData.semester,
-          session: stepData.session,
-          department: stepData.department,
-          shift: stepData.shift,
-          campus: stepData.campus,
+          program: degreeClass.name || "",
+          semester: "",
+          session: "",
+          department: department.name || "",
+          shift: shift.name || "",
+          campus: campus?.name || "",
           appliedOn: new Date(),
         };
+        student.campusId = campusId || null;
+        student.departmentId = departmentId;
+        student.degreeClassId = degreeClassId;
+        student.shiftId = shiftId;
+        student.batchId = null; // assigned later, at approval time
         student.lastStepCompleted = 4;
         student.isComplete = true;
         student.status = "pending"; // Ready for approval
+
         break;
+      }
     }
     
     // Save student

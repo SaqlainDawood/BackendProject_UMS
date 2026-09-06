@@ -1,4 +1,5 @@
 import express from "express";
+import campusRoutes from "./Campus.routes.js";
 import departmentRoutes from "./Department.routes.js";
 import degreeClassRoutes from "./Degreeclass.routes.js";
 import shiftRoutes from "./Shift.routes.js";
@@ -13,6 +14,7 @@ import feeTypeRoutes from "./Feetype.routes.js";
 const router = express.Router();
 
 
+router.use("/campuses", campusRoutes);
 router.use("/departments", departmentRoutes);
 router.use("/degree-classes", degreeClassRoutes);
 router.use("/shifts", shiftRoutes);
@@ -26,4 +28,4 @@ router.use("/fee-type",feeTypeRoutes);
 
 
 
-export default router;   
+export default router;

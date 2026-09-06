@@ -1,9 +1,11 @@
+import mongoose from "mongoose";
 import Batch from "../../../Models/Batch.js";
 import BatchSemesterLog from "../../../Models/Batchsemesterlog.js";
 import Department from "../../../Models/Department.js";
 import DegreeClass from "../../../Models/Degreeclass.js";
 import Shift from "../../../Models/Shift.js";
 import Session from "../../../Models/Session.js";
+import Campus from "../../../Models/Campus.js";
 
 
 /* =========================================================
@@ -20,7 +22,7 @@ function cleanErrorMessage(err, context = {}) {
       return `A batch already exists for ${context.batchName}`;
     }
 
-    return "A batch already exists for this department, class, shift and starting session";
+    return "A batch already exists for this class, shift and starting session";
   }
 
   if (err.name === "ValidationError") {
@@ -105,168 +107,190 @@ export const getNextSession = async (req, res) => {
 ========================================================= */
 
 export const createBatch = async (req, res) => {
-  let batchNameForError = null;
+  const session = await mongoose.startSession();
 
   try {
-    const {
-      departmentId,
-      degreeClassId,
-      shiftId,
-      startSessionId,
-      totalSemesters,
-    } = req.body;
+    const { degreeClassId, startSessionId } = req.body;
 
-    if (
-      !departmentId ||
-      !degreeClassId ||
-      !shiftId ||
-      !startSessionId ||
-      !totalSemesters
-    ) {
+    if (!degreeClassId || !startSessionId) {
       return res.status(400).json({
         success: false,
-        message:
-          "departmentId, degreeClassId, shiftId, startSessionId and totalSemesters are required",
+        message: "degreeClassId and startSessionId are required",
       });
     }
 
-    const [
-      department,
-      degreeClass,
-      shift,
-      session,
-    ] = await Promise.all([
-      Department.findById(departmentId),
+    const [degreeClass, startSession] = await Promise.all([
       DegreeClass.findById(degreeClassId),
-      Shift.findById(shiftId),
       Session.findById(startSessionId),
     ]);
 
-    if (!department) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid departmentId",
-      });
-    }
-
     if (!degreeClass) {
-      return res.status(400).json({
+      return res.status(404).json({
         success: false,
         message: "Invalid degreeClassId",
       });
     }
 
-    if (!shift) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid shiftId",
-      });
-    }
-
-    if (!session) {
+    if (!startSession) {
       return res.status(400).json({
         success: false,
         message: "Invalid startSessionId",
       });
     }
 
-    // used only to build a clean duplicate-key message in the catch block below
-    if (degreeClass?.code && session?.year) {
-      batchNameForError = `${degreeClass.code}-${session.year}`;
-    }
-
-    /* Department -> Degree Class */
-
-    const classDepartmentId =
-      degreeClass.departmentId?._id ||
-      degreeClass.departmentId;
-
-    if (
-      String(classDepartmentId) !==
-      String(departmentId)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "This class does not belong to the selected department",
-      });
-    }
-
-    /* Degree Class -> Shift */
-
-    const shiftDegreeClassId =
-      shift.degreeClassId?._id ||
-      shift.degreeClassId;
-
     /*
-      IMPORTANT:
-
-      Agar shift.degreeClassId null hai,
-      to backend ke current data ke mutabiq
-      shift kisi class ke saath attached nahi hai.
-
-      Is case mein batch create allow nahi karna.
+      totalSemesters is NEVER trusted from the frontend.
+      It's derived server-side from the DegreeClass's duration
+      (in years) — 2 semesters per year.
     */
 
-    if (!shiftDegreeClassId) {
+    if (!degreeClass.duration || degreeClass.duration <= 0) {
       return res.status(400).json({
         success: false,
-        message:
-          "This shift is not assigned to any degree class",
+        message: "Selected degree class does not have a valid duration.",
       });
     }
 
-    if (
-      String(shiftDegreeClassId) !==
-      String(degreeClassId)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "This shift does not belong to the selected class",
-      });
-    }
+    const totalSemesters = degreeClass.duration * 2;
 
-    /* Create batch */
+    /* departmentId is NEVER trusted from the frontend — always derived from the DegreeClass */
 
-    const batch = await Batch.create({
-      departmentId,
+    const departmentId =
+      degreeClass.departmentId?._id || degreeClass.departmentId;
+
+    /* All active shifts of this DegreeClass — one Batch will be created per shift */
+
+    const shifts = await Shift.find({
       degreeClassId,
-      shiftId,
+      isActive: true,
+    });
+
+    if (!shifts.length) {
+      return res.status(400).json({
+        success: false,
+        message: "No active shifts found for this degree class.",
+      });
+    }
+
+    /* Skip shifts that already have a batch for this class + session */
+
+    const existingBatches = await Batch.find({
+      degreeClassId,
       startSessionId,
-      totalSemesters: Number(totalSemesters),
-      currentSemester: 1,
-      status: "active",
-    });
+      shiftId: { $in: shifts.map((s) => s._id) },
+    }).select("shiftId");
 
-    /* First semester history */
+    const shiftsWithExistingBatch = new Set(
+      existingBatches.map((b) => String(b.shiftId))
+    );
 
-    await BatchSemesterLog.create({
-      batchId: batch._id,
-      sessionId: startSessionId,
-      semester: 1,
-    });
+    const shiftsToCreate = shifts.filter(
+      (shift) => !shiftsWithExistingBatch.has(String(shift._id))
+    );
 
-    const populatedBatch =
-      await Batch.findById(batch._id)
-        .populate("departmentId", "name code")
-        .populate("degreeClassId", "name code")
-        .populate("shiftId", "name")
-        .populate(
-          "startSessionId",
-          "name term year startDate endDate"
+    if (!shiftsToCreate.length) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Batches already exist for all shifts of this class and session.",
+      });
+    }
+
+    /*
+      Create one Batch per remaining shift, all inside a single transaction —
+      either every batch (+ its semester log) is created, or none are.
+
+      FALLBACK: transactions only work on a replica set / mongos. On a
+      standalone MongoDB (common in local dev) they fail with code 20
+      ("Transaction numbers are only allowed on a replica set member or
+      mongos"). In that case we fall back to plain sequential inserts
+      with a manual best-effort rollback if something fails midway —
+      still safe, just not atomic at the storage-engine level.
+    */
+
+    let createdBatchIds = [];
+
+    const runCreation = async (useSession) => {
+      const insertOptions = useSession ? { session } : {};
+
+      const batchDocs = await Batch.insertMany(
+        shiftsToCreate.map((shift) => ({
+          departmentId,
+          degreeClassId,
+          shiftId: shift._id,
+          startSessionId,
+          totalSemesters,
+          currentSemester: 1,
+          status: "active",
+        })),
+        insertOptions
+      );
+
+      createdBatchIds = batchDocs.map((b) => b._id);
+
+      try {
+        await BatchSemesterLog.insertMany(
+          batchDocs.map((batch) => ({
+            batchId: batch._id,
+            sessionId: startSessionId,
+            semester: 1,
+          })),
+          insertOptions
         );
+      } catch (logErr) {
+        if (!useSession) {
+          // Manual rollback since there's no transaction to abort
+          await Batch.deleteMany({ _id: { $in: createdBatchIds } });
+          createdBatchIds = [];
+        }
+        throw logErr;
+      }
+    };
+
+    const isTransactionsUnsupported = (err) => {
+      const msg = String(err?.message || err?.errmsg || "");
+      return (
+        err?.code === 20 ||
+        err?.codeName === "IllegalOperation" ||
+        /replica set member or mongos/i.test(msg) ||
+        /Transaction numbers are only allowed/i.test(msg)
+      );
+    };
+
+    try {
+      await session.withTransaction(() => runCreation(true));
+    } catch (err) {
+      if (isTransactionsUnsupported(err)) {
+        await runCreation(false);
+      } else {
+        throw err;
+      }
+    }
+
+    const populatedBatches = await Batch.find({
+      _id: { $in: createdBatchIds },
+    })
+      .populate({
+        path: "departmentId",
+        select: "name code campusId",
+        populate: { path: "campusId", select: "name code" },
+      })
+      .populate("degreeClassId", "name code")
+      .populate("shiftId", "name")
+      .populate("startSessionId", "name term year startDate endDate");
 
     return res.status(201).json({
       success: true,
-      message: "Batch created successfully",
-      data: populatedBatch,
+      message: "Batches created successfully",
+      data: populatedBatches,
     });
   } catch (err) {
     return res.status(400).json({
       success: false,
-      message: cleanErrorMessage(err, { batchName: batchNameForError }),
+      message: cleanErrorMessage(err),
     });
+  } finally {
+    session.endSession();
   }
 };
 
@@ -281,6 +305,7 @@ export const getBatches = async (req, res) => {
       degreeClassId,
       shiftId,
       status,
+      currentSemester,
     } = req.query;
 
     const filter = {};
@@ -301,11 +326,17 @@ export const getBatches = async (req, res) => {
       filter.status = status;
     }
 
+    // e.g. ?currentSemester=1 -> only "new" batches that are still in their first semester
+    if (currentSemester) {
+      filter.currentSemester = Number(currentSemester);
+    }
+
     const batches = await Batch.find(filter)
-      .populate(
-        "departmentId",
-        "name code"
-      )
+      .populate({
+        path: "departmentId",
+        select: "name code campusId",
+        populate: { path: "campusId", select: "name code" },
+      })
       .populate(
         "degreeClassId",
         "name code"
@@ -342,10 +373,11 @@ export const getBatchById = async (req, res) => {
   try {
     const batch =
       await Batch.findById(req.params.id)
-        .populate(
-          "departmentId",
-          "name code"
-        )
+        .populate({
+          path: "departmentId",
+          select: "name code campusId",
+          populate: { path: "campusId", select: "name code" },
+        })
         .populate(
           "degreeClassId",
           "name code"
@@ -665,12 +697,12 @@ export const updateBatch = async (
 ) => {
   try {
     const {
-      departmentId,
       degreeClassId,
-      shiftId,
       startSessionId,
-      totalSemesters,
     } = req.body;
+
+    // departmentId, shiftId, totalSemesters are NEVER accepted from the frontend —
+    // they are always derived server-side, same as in createBatch.
 
     const batch =
       await Batch.findById(req.params.id);
@@ -682,21 +714,11 @@ export const updateBatch = async (
       });
     }
 
-    /* Optional hierarchy validation */
+    const updateData = {};
 
-    if (departmentId || degreeClassId) {
-      const finalDepartmentId =
-        departmentId ||
-        batch.departmentId;
-
-      const finalDegreeClassId =
-        degreeClassId ||
-        batch.degreeClassId;
-
+    if (degreeClassId) {
       const degreeClass =
-        await DegreeClass.findById(
-          finalDegreeClassId
-        );
+        await DegreeClass.findById(degreeClassId);
 
       if (!degreeClass) {
         return res.status(400).json({
@@ -705,82 +727,49 @@ export const updateBatch = async (
         });
       }
 
+      if (!degreeClass.duration || degreeClass.duration <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Selected degree class does not have a valid duration.",
+        });
+      }
+
+      // Existing shift must still belong to the new DegreeClass —
+      // the API has no way to pick a different shift on its own,
+      // so switching class only works if the current shift is shared
+      // by that class too. Otherwise the caller must create a new batch.
+      const currentShift =
+        await Shift.findById(batch.shiftId);
+
       if (
-        String(
-          degreeClass.departmentId
-        ) !== String(finalDepartmentId)
+        !currentShift ||
+        String(currentShift.degreeClassId) !== String(degreeClassId)
       ) {
         return res.status(400).json({
           success: false,
           message:
-            "This class does not belong to the selected department",
-        });
-      }
-    }
-
-    /* Shift validation */
-
-    if (shiftId || degreeClassId) {
-      const finalShiftId =
-        shiftId || batch.shiftId;
-
-      const finalDegreeClassId =
-        degreeClassId ||
-        batch.degreeClassId;
-
-      const shift =
-        await Shift.findById(
-          finalShiftId
-        );
-
-      if (!shift) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid shiftId",
+            "This batch's current shift does not belong to the new degree class. Create a new batch instead of changing the class.",
         });
       }
 
-      if (!shift.degreeClassId) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "This shift is not assigned to any degree class",
-        });
-      }
-
-      if (
-        String(
-          shift.degreeClassId
-        ) !== String(finalDegreeClassId)
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "This shift does not belong to the selected class",
-        });
-      }
-    }
-
-    const updateData = {};
-
-    if (departmentId)
+      updateData.degreeClassId = degreeClassId;
       updateData.departmentId =
-        departmentId;
+        degreeClass.departmentId?._id || degreeClass.departmentId;
+      updateData.totalSemesters = degreeClass.duration * 2;
+    }
 
-    if (degreeClassId)
-      updateData.degreeClassId =
-        degreeClassId;
+    if (startSessionId) {
+      const session = await Session.findById(startSessionId);
 
-    if (shiftId)
-      updateData.shiftId = shiftId;
+      if (!session) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid startSessionId",
+        });
+      }
 
-    if (startSessionId)
-      updateData.startSessionId =
-        startSessionId;
-
-    if (totalSemesters)
-      updateData.totalSemesters =
-        Number(totalSemesters);
+      updateData.startSessionId = startSessionId;
+    }
 
     const updated =
       await Batch.findByIdAndUpdate(
@@ -791,10 +780,11 @@ export const updateBatch = async (
           runValidators: true,
         }
       )
-        .populate(
-          "departmentId",
-          "name code"
-        )
+        .populate({
+          path: "departmentId",
+          select: "name code campusId",
+          populate: { path: "campusId", select: "name code" },
+        })
         .populate(
           "degreeClassId",
           "name code"
@@ -855,6 +845,215 @@ export const deleteBatch = async (
     return res.status(400).json({
       success: false,
       message: cleanErrorMessage(err),
+    });
+  }
+};
+
+/* =========================================================
+   GET FULL HIERARCHY
+   GET /api/hierarchy
+
+   Campus -> Departments -> Degree Classes -> Shifts -> Batches
+
+   Sab collections ek ek dafa fetch karke, phir JS mein
+   in-memory group kar rahe hain (5 alag N+1 queries chalane
+   ke bajaye) — chahe data zyada ho, ye fast rehta hai.
+========================================================= */
+
+export const getHierarchy = async (req, res) => {
+  try {
+    const [campuses, departments, degreeClasses, shifts, batches] =
+      await Promise.all([
+        Campus.find().sort({ name: 1 }).lean(),
+        Department.find().sort({ name: 1 }).lean(),
+        DegreeClass.find().sort({ name: 1 }).lean(),
+        Shift.find().sort({ name: 1 }).lean(),
+        Batch.find()
+          .populate("startSessionId", "name term year startDate endDate")
+          .sort({ createdAt: -1 })
+          .lean(),
+      ]);
+
+    // Batches grouped by shiftId
+    const batchesByShift = {};
+    for (const batch of batches) {
+      const key = String(batch.shiftId);
+      if (!batchesByShift[key]) batchesByShift[key] = [];
+
+      const degreeClass = degreeClasses.find(
+        (dc) => String(dc._id) === String(batch.degreeClassId)
+      );
+
+      batchesByShift[key].push({
+        _id: batch._id,
+        name:
+          degreeClass && batch.startSessionId
+            ? `${degreeClass.code}-${batch.startSessionId.year}`
+            : null,
+        startSessionId: batch.startSessionId,
+        totalSemesters: batch.totalSemesters,
+        currentSemester: batch.currentSemester,
+        status: batch.status,
+        createdAt: batch.createdAt,
+        updatedAt: batch.updatedAt,
+      });
+    }
+
+    // Shifts grouped by degreeClassId, each with its batches attached
+    const shiftsByClass = {};
+    for (const shift of shifts) {
+      const key = String(shift.degreeClassId);
+      if (!shiftsByClass[key]) shiftsByClass[key] = [];
+
+      shiftsByClass[key].push({
+        _id: shift._id,
+        name: shift.name,
+        isActive: shift.isActive,
+        batches: batchesByShift[String(shift._id)] || [],
+      });
+    }
+
+    // Degree classes grouped by departmentId, each with its shifts attached
+    const classesByDepartment = {};
+    for (const degreeClass of degreeClasses) {
+      const key = String(degreeClass.departmentId);
+      if (!classesByDepartment[key]) classesByDepartment[key] = [];
+
+      classesByDepartment[key].push({
+        _id: degreeClass._id,
+        name: degreeClass.name,
+        code: degreeClass.code,
+        duration: degreeClass.duration,
+        isActive: degreeClass.isActive,
+        shifts: shiftsByClass[String(degreeClass._id)] || [],
+      });
+    }
+
+    // Departments grouped by campusId, each with its classes attached
+    const departmentsByCampus = {};
+    for (const department of departments) {
+      const key = String(department.campusId);
+      if (!departmentsByCampus[key]) departmentsByCampus[key] = [];
+
+      departmentsByCampus[key].push({
+        _id: department._id,
+        name: department.name,
+        code: department.code,
+        description: department.description,
+        classes: classesByDepartment[String(department._id)] || [],
+      });
+    }
+
+    // Final tree: Campus at the top
+    const tree = campuses.map((campus) => ({
+      _id: campus._id,
+      name: campus.name,
+      code: campus.code,
+      location: campus.location,
+      description: campus.description,
+      isActive: campus.isActive,
+      departments: departmentsByCampus[String(campus._id)] || [],
+    }));
+
+    return res.json({
+      success: true,
+      data: tree,
+    });
+  } catch (err) {
+    return res.status(400).json({
+      success: false,
+      message: err.message || "Something went wrong, please try again",
+    });
+  }
+};
+
+/* =========================================================
+   GET CREATE-BATCH FORM OPTIONS
+   GET /api/batches/form-options
+
+   For the "Create Batch" form:
+   Campus -> Departments -> Degree Classes (each with its
+   existing Shifts, for reference) + a separate global list
+   of Sessions (Session is not scoped to any class, so it's
+   returned once at the top level, not nested).
+========================================================= */
+
+export const getBatchFormOptions = async (req, res) => {
+  try {
+    const [campuses, departments, degreeClasses, shifts, sessions] =
+      await Promise.all([
+        Campus.find({ isActive: true }).sort({ name: 1 }).lean(),
+        Department.find().sort({ name: 1 }).lean(),
+        DegreeClass.find({ isActive: true }).sort({ name: 1 }).lean(),
+        Shift.find({ isActive: true }).sort({ name: 1 }).lean(),
+        Session.find().sort({ startDate: 1 }).lean(),
+      ]);
+
+    // Shifts grouped by degreeClassId
+    const shiftsByClass = {};
+    for (const shift of shifts) {
+      const key = String(shift.degreeClassId);
+      if (!shiftsByClass[key]) shiftsByClass[key] = [];
+
+      shiftsByClass[key].push({
+        _id: shift._id,
+        name: shift.name,
+      });
+    }
+
+    // Degree classes grouped by departmentId, each with its shifts attached
+    const classesByDepartment = {};
+    for (const degreeClass of degreeClasses) {
+      const key = String(degreeClass.departmentId);
+      if (!classesByDepartment[key]) classesByDepartment[key] = [];
+
+      classesByDepartment[key].push({
+        _id: degreeClass._id,
+        name: degreeClass.name,
+        code: degreeClass.code,
+        duration: degreeClass.duration,
+        shifts: shiftsByClass[String(degreeClass._id)] || [],
+      });
+    }
+
+    // Departments grouped by campusId, each with its classes attached
+    const departmentsByCampus = {};
+    for (const department of departments) {
+      const key = String(department.campusId);
+      if (!departmentsByCampus[key]) departmentsByCampus[key] = [];
+
+      departmentsByCampus[key].push({
+        _id: department._id,
+        name: department.name,
+        code: department.code,
+        classes: classesByDepartment[String(department._id)] || [],
+      });
+    }
+
+    // Final tree: Campus at the top
+    const tree = campuses.map((campus) => ({
+      _id: campus._id,
+      name: campus.name,
+      code: campus.code,
+      departments: departmentsByCampus[String(campus._id)] || [],
+    }));
+
+    return res.json({
+      success: true,
+      data: tree,
+      sessions: sessions.map((s) => ({
+        _id: s._id,
+        name: s.name,
+        term: s.term,
+        year: s.year,
+        startDate: s.startDate,
+        endDate: s.endDate,
+      })),
+    });
+  } catch (err) {
+    return res.status(400).json({
+      success: false,
+      message: err.message || "Something went wrong, please try again",
     });
   }
 };

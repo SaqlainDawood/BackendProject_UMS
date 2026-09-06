@@ -17,9 +17,11 @@ const batchSchema = new mongoose.Schema(
   }
 );
 
-// ek Department+Class+Shift+StartSession combination ki sirf ek Batch ho
-// (isse same class+year ke liye alag alag Shifts allowed rehte hain, e.g. BSCS-2026-Morning & BSCS-2026-Evening)
-batchSchema.index({ departmentId: 1, degreeClassId: 1, shiftId: 1, startSessionId: 1 }, { unique: true });
+// ek DegreeClass+Shift+StartSession combination ki sirf ek Batch ho.
+// departmentId ab identity mein shamil nahi kyunke wo hamesha degreeClassId se
+// hi derive hota hai (ek DegreeClass hamesha ek hi Department ki hoti hai),
+// isliye alag se check karne ki zarurat nahi.
+batchSchema.index({ degreeClassId: 1, shiftId: 1, startSessionId: 1 }, { unique: true });
 
 /*
   VIRTUAL: name

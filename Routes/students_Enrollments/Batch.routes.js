@@ -9,6 +9,7 @@ import {
   advanceBatch,
   updateBatch,
   deleteBatch,
+  getHierarchy,
 } from "../../Controllers/Student/student_Enrollments/Batch.controller.js";
 
 const router = express.Router();
@@ -19,6 +20,8 @@ router.post("/", createBatch);
 /* READ ALL */
 router.get("/", getBatches);
 router.get( "/next-session", getNextSession
+);
+router.get( "/hierarchy", getHierarchy
 );
 router.get( "/:id", getBatchById
 );

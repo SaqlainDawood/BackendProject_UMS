@@ -95,6 +95,35 @@ const StudentSchema = new mongoose.Schema({
 
   // Step 4: Enrollment
   enrollment: EnrollmentSchema,
+  // Real link to the Batch the student selected in Step 4 (source of truth).
+  // The `enrollment` object above stays as a denormalized snapshot for quick display.
+  batchId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Batch",
+    default: null,
+  },
+  // Individual selection chain the student picked in Step 4 (Campus -> Department -> Class -> Shift),
+  // kept as real refs (in addition to batchId) so admins can filter/query students by any level.
+  campusId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Campus",
+    default: null,
+  },
+  departmentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Department",
+    default: null,
+  },
+  degreeClassId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "DegreeClass",
+    default: null,
+  },
+  shiftId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Shift",
+    default: null,
+  },
   
   gpa: {
     type: [
