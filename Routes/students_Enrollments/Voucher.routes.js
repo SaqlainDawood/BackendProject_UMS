@@ -18,7 +18,7 @@ router.post("/bulk/department", bulkCreateVoucherForDepartment); // poore depart
 router.get("/", getVouchers);                    // ?studentId= or ?enrollmentId=&semester=&payStatus=
 router.get("/report", getVoucherStatusReport);    // ?batchId=&semester=  ⚠️ /:id se PEHLE
 router.get("/:id", getVoucherById);
-router.put("/:id/status", updateVoucherStatus);   // { payStatus: "paid" }
+router.put("/student/:studentId/status", updateVoucherStatus); // body: { voucherId, payStatus }
 router.delete("/:id", deleteVoucher);
 
 export default router;

@@ -248,11 +248,31 @@ export const getVoucherById = async (req, res) => {
 // UPDATE PAY STATUS — fine ko is waqt freeze karke totalAmount mein save kar deta hai
 export const updateVoucherStatus = async (req, res) => {
   try {
-    const { payStatus } = req.body;
+    const { studentId } = req.params;
+    const { voucherId, payStatus } = req.body;
 
-    const voucher = await Voucher.findById(req.params.id).populate("fineTypeId", "name type amount");
+    if (!voucherId || !payStatus) {
+      return res.status(400).json({
+        success: false,
+        message: "voucherId and payStatus are required",
+      });
+    }
+
+    const voucher = await Voucher.findById(voucherId)
+      .populate("fineTypeId", "name type amount")
+      .populate({ path: "enrollmentId", select: "studentId" });
+
     if (!voucher) {
       return res.status(404).json({ success: false, message: "Voucher not found" });
+    }
+
+    // Voucher us studentId ki hi honi chahiye — warna kisi aur student ki
+    // voucher URL mein studentId badal ke update nahi ki ja sakti
+    if (String(voucher.enrollmentId?.studentId) !== String(studentId)) {
+      return res.status(400).json({
+        success: false,
+        message: "This voucher does not belong to the given student",
+      });
     }
 
     if (payStatus === "paid") {
