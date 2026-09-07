@@ -29,6 +29,16 @@ const facultySchema = new mongoose.Schema(
     city: { type: String, required: true },
     address: { type: String, required: true },
     department: { type: String, required: true },
+    // Optional real ref to Department (in ADDITION to the existing `department`
+    // string above, which stays untouched to avoid breaking existing
+    // registration/login/portal/attendance code that reads it). This is
+    // what the new Subject/Teacher-Subject-Assignment module uses to know
+    // exactly which Department a teacher belongs to.
+    departmentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Department",
+      default: null,
+    },
     designation: { type: String, required: true },
     qualification: { type: String, required: true },
     specialization: { type: String, required: true },
