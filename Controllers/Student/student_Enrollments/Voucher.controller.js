@@ -54,12 +54,22 @@ function attachFine(voucherDoc) {
 // CREATE VOUCHER
 export const createVoucher = async (req, res) => {
   try {
-    const { studentId, enrollmentId: bodyEnrollmentId, semester, payDueDate, fineDueDate, fineTypeId, includeTransport, transportFeeTypeId, customItems } = req.body;
+    const { studentId, enrollmentId: bodyEnrollmentId, payDueDate, fineDueDate, fineTypeId, includeTransport, transportFeeTypeId, customItems } = req.body;
 
-    if ((!studentId && !bodyEnrollmentId) || !semester || !payDueDate || !fineDueDate) {
+    // semester is NEVER accepted from the frontend — it's always derived
+    // from the student's active enrollment's Batch (batch.currentSemester),
+    // same as departmentId/degreeClassId/shiftId are derived elsewhere.
+    if (!studentId && !bodyEnrollmentId) {
       return res.status(400).json({
         success: false,
-        message: "studentId (or enrollmentId), semester, payDueDate and fineDueDate are required",
+        message: "studentId (or enrollmentId), payDueDate and fineDueDate are required",
+      });
+    }
+
+    if (!payDueDate || !fineDueDate) {
+      return res.status(400).json({
+        success: false,
+        message: "studentId (or enrollmentId), payDueDate and fineDueDate are required",
       });
     }
 
@@ -84,6 +94,19 @@ export const createVoucher = async (req, res) => {
     const batch = enrollment.batchId;
     if (!batch) {
       return res.status(400).json({ success: false, message: "This enrollment has no linked batch" });
+    }
+
+    // semester is always the batch's current semester — never trusted from the request body
+    const semester = batch.currentSemester;
+
+    // ek enrollment ki ek semester ki sirf ek voucher ho sakti hai
+    // (DB unique index bhi hai, lekin yahan pehle hi clear message dene ke liye check kar lete hain)
+    const alreadyExists = await Voucher.findOne({ enrollmentId, semester });
+    if (alreadyExists) {
+      return res.status(400).json({
+        success: false,
+        message: "A voucher already exists for this student for this semester",
+      });
     }
 
     if (fineTypeId) {
