@@ -19,6 +19,7 @@ import gradingRoutes from './Routes/TPRoutes/gradingRoutes.js'
 import studentActivityRoutes from './Routes/StudentPortal/studentActivityRoutes.js';
 import EnrollmentRoutes from './Routes/students_Enrollments/routes.js';
 import academicsRoutes from './Routes/Admin/Academics/routes.js';
+import subjectRoutes from './Routes/subject/routes.js';
 dotenv.config();
 
 const app = express();
@@ -87,6 +88,7 @@ app.use('/api/faculty/portal' , FacultyPortalAttendance)
 
 app.use('/api', EnrollmentRoutes);
 app.use('/api', academicsRoutes);
+app.use('/api/subjects', subjectRoutes); 
 
 app.get("/health", (req, res) => {
   res.status(200).json({
