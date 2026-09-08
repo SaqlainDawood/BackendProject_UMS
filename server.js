@@ -87,8 +87,8 @@ app.use('/api/admin/attendance' , adminAttendance);
 app.use('/api/faculty/portal' , FacultyPortalAttendance)
 
 app.use('/api', EnrollmentRoutes);
-app.use('/api', academicsRoutes);
-app.use('/api/subjects', subjectRoutes); 
+// app.use('/api', academicsRoutes);
+app.use('/api', subjectRoutes); 
 
 app.get("/health", (req, res) => {
   res.status(200).json({
