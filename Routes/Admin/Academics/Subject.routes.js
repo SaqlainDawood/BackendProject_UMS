@@ -1,16 +1,16 @@
 import express from "express";
 import {
   createSubject,
-  getSubjects,
+  getAllSubjects,
   getSubjectById,
   updateSubject,
   deleteSubject,
-} from "../../../Controllers/Admin/Academics/Subject.controller.js";
+} from "../../../Controllers/Subject/Subject.controller.js";
 
 const router = express.Router();
 
 router.post("/", createSubject);
-router.get("/", getSubjects); // ?departmentId=&degreeClassId=&semester=&shift=
+router.get("/", getAllSubjects); // ?departmentId=&degreeClassId=&semester=&shift=
 router.get("/:id", getSubjectById);
 router.put("/:id", updateSubject);
 router.delete("/:id", deleteSubject);
