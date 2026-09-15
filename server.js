@@ -29,19 +29,6 @@ const app = express();
 const PORT = process.env.PORT || 8000;
 
 
-// Connect DB and start server after successful DB connection
-// This prevents request handlers from running before mongoose is connected
-(async () => {
-    try {
-        await ConnectDB();
-        app.listen(PORT, () => {
-            console.log(`Server is Started at http://localhost:${PORT}`);
-        });
-    } catch (err) {
-        console.error('Failed to connect to DB, exiting...', err?.message || err);
-        process.exit(1);
-    }
-})();
 app.use(cors({
     origin:[
          "https://studentteacherportal-j7yl2fvuj-saqlain-dawoods-projects.vercel.app",
@@ -103,3 +90,15 @@ app.get("/health", (req, res) => {
   });
 });
 
+// Start the server immediately so Render's port scan succeeds right away,
+// instead of waiting for MongoDB to connect first.
+app.listen(PORT, () => {
+    console.log(`Server is Started at http://localhost:${PORT}`);
+});
+
+// Connect to MongoDB in the background. If it fails, log it — routes that
+// need the DB will simply error until it reconnects, but the server itself
+// stays up and Render's health checks keep passing.
+ConnectDB().catch((err) => {
+    console.error('Failed to connect to DB:', err?.message || err);
+});
