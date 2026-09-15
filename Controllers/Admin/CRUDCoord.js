@@ -271,6 +271,14 @@ export const registerCoordinator = async (req, res) => {
     }
 
     // Handle specific errors
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid value for "${error.path}" — please check this field`,
+        error: error.message,
+      });
+    }
+
     if (error.name === "ValidationError") {
       const errors = Object.values(error.errors).map((err) => err.message);
       return res.status(400).json({
@@ -308,10 +316,12 @@ export const registerCoordinator = async (req, res) => {
       });
     }
 
+    console.error("Registration error stack:", error.stack);
     res.status(500).json({
       success: false,
       message: "Internal server error",
       error: error.message,
+      errorType: error.name,
     });
   }
 };
@@ -552,4 +562,3 @@ export const deleteCoordPermanently = async(req,res)=>{
     })
   }
 }
-
