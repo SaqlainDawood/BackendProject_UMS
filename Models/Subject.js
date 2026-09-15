@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import DegreeClass from "./DegreeClass.js";
+import DegreeClass from "./Degreeclass.js";
 
 const subjectSchema = new mongoose.Schema(
   {

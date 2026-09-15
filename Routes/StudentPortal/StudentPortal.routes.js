@@ -9,7 +9,7 @@ import {
   getMyActivities,
 } from "../../Controllers/Student/StudentPortal.controller.js";
 
-import { protect } from "../../Middleware/AuthMiddleware.js";
+import { protect } from "../../Middleware/authMiddleware.js";
 
 const router = express.Router();
 
