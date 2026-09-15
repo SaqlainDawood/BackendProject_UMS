@@ -1,4 +1,3 @@
-
 import express from "express";
 
 import {
@@ -14,43 +13,43 @@ import {
 
 const router = express.Router();
 
-/* CREATE SINGLE */
+// Create single session
 router.post("/", createSession);
 
-/* GENERATE SPRING + FALL */
+// Generate sessions according to DegreeClass duration
 router.post(
   "/generate",
   generateSessionsForDegreeClass
 );
 
-/* GET ALL */
+// Get all sessions
 router.get("/", getSessions);
 
-/* CURRENT */
+// Current active session
 router.get(
   "/current",
   getCurrentSession
 );
 
-/* STATUS */
+// Session status
 router.get(
   "/status",
   getSessionStatus
 );
 
-/* SINGLE */
+// Get single session
 router.get(
   "/:id",
   getSessionById
 );
 
-/* UPDATE */
+// Update
 router.put(
   "/:id",
   updateSession
 );
 
-/* DELETE */
+// Delete
 router.delete(
   "/:id",
   deleteSession

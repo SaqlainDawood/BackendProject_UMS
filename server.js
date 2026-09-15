@@ -20,6 +20,9 @@ import studentActivityRoutes from './Routes/StudentPortal/studentActivityRoutes.
 import EnrollmentRoutes from './Routes/students_Enrollments/routes.js';
 import academicsRoutes from './Routes/Admin/Academics/routes.js';
 import subjectRoutes from './Routes/subject/routes.js';
+import studentPortalRoutes from "./Routes/StudentPortal/StudentPortal.routes.js";
+
+
 dotenv.config();
 
 const app = express();
@@ -85,6 +88,8 @@ app.use('/api/admin/classes',studentEnrollmentRoutes);
 app.use('/api/admin/attendance' , adminAttendance);
 // Facutly Portal Attendance
 app.use('/api/faculty/portal' , FacultyPortalAttendance)
+//student portal routes
+app.use( "/api/student-portal", studentPortalRoutes);
 
 app.use('/api', EnrollmentRoutes);
 // app.use('/api', academicsRoutes);
@@ -98,4 +103,3 @@ app.get("/health", (req, res) => {
   });
 });
 
-// server is started after DB connection above

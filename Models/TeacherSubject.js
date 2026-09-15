@@ -2,16 +2,44 @@ import mongoose from "mongoose";
 
 const teacherSubjectSchema = new mongoose.Schema(
   {
-    teacherId: { type: mongoose.Schema.Types.ObjectId, ref: "Faculty", required: true },
-    subjectId: { type: mongoose.Schema.Types.ObjectId, ref: "Subject", required: true },
-    assignedDate: { type: Date, default: Date.now },
+    teacherId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Teacher",
+      required: true,
+      index: true,
+    },
+
+    batchSemesterSubjectId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "BatchSemesterSubject",
+      required: true,
+      index: true,
+    },
+
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-// ek teacher ko ek subject sirf ek dafa assign ho (duplicate assignment prevent)
-teacherSubjectSchema.index({ teacherId: 1, subjectId: 1 }, { unique: true });
+// Same subject assignment ko same teacher ko duplicate na kare
+teacherSubjectSchema.index(
+  {
+    teacherId: 1,
+    batchSemesterSubjectId: 1,
+  },
+  {
+    unique: true,
+  }
+);
 
-const TeacherSubject =
-  mongoose.models.TeacherSubject || mongoose.model("TeacherSubject", teacherSubjectSchema);
+const TeacherSubject = mongoose.model(
+  "TeacherSubject",
+  teacherSubjectSchema
+);
+
 export default TeacherSubject;
