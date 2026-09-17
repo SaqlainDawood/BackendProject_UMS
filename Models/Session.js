@@ -35,6 +35,9 @@ const sessionSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+// Same session allowed in different degree classes
+// But same degree class cannot have same term + year
 sessionSchema.index(
   {
     degreeClassId: 1,
@@ -43,12 +46,7 @@ sessionSchema.index(
   },
   {
     unique: true,
-    name: "unique_degree_class_session",
   }
 );
 
-const Session =
-  mongoose.models.Session ||
-  mongoose.model("Session", sessionSchema);
-
-export default Session;
+export default mongoose.model("Session", sessionSchema);
