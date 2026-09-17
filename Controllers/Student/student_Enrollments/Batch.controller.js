@@ -7,11 +7,6 @@ import Shift from "../../../Models/Shift.js";
 import Session from "../../../Models/Session.js";
 import Campus from "../../../Models/Campus.js";
 
-
-/* =========================================================
-   CLEAN ERROR
-========================================================= */
-
 function cleanErrorMessage(err, context = {}) {
   if (err.name === "CastError") {
     return `Invalid ${err.path} — please provide a valid ID`;
@@ -33,31 +28,25 @@ function cleanErrorMessage(err, context = {}) {
 
   return err.message || "Something went wrong, please try again";
 }
-
-/* =========================================================
-   FIND NEXT SESSION
-   IMPORTANT:
-   Next session means the first session whose startDate
-   is AFTER current session's startDate.
-========================================================= */
-
 async function findNextSession(currentSession) {
   if (!currentSession) return null;
 
+  let nextTerm;
+  let nextYear = Number(currentSession.year);
+
+  if (currentSession.term === "Spring") {
+    nextTerm = "Fall";
+  } else {
+    nextTerm = "Spring";
+    nextYear += 1;
+  }
+
   return Session.findOne({
-    startDate: {
-      $gt: currentSession.startDate,
-    },
-  }).sort({
-    startDate: 1,
+    degreeClassId: currentSession.degreeClassId,
+    term: nextTerm,
+    year: nextYear,
   });
 }
-
-/* =========================================================
-   GET NEXT SESSION
-   GET /api/batches/next-session?currentSessionId=xxx
-========================================================= */
-
 export const getNextSession = async (req, res) => {
   try {
     const { currentSessionId } = req.query;
@@ -69,8 +58,7 @@ export const getNextSession = async (req, res) => {
       });
     }
 
-    const currentSession =
-      await Session.findById(currentSessionId);
+    const currentSession = await Session.findById(currentSessionId);
 
     if (!currentSession) {
       return res.status(404).json({
@@ -79,14 +67,18 @@ export const getNextSession = async (req, res) => {
       });
     }
 
-    const nextSession =
-      await findNextSession(currentSession);
+    const nextSession = await findNextSession(currentSession);
 
     if (!nextSession) {
       return res.status(404).json({
         success: false,
-        message:
-          "No next academic session found. Please create the next academic session first.",
+        message: `Next session not found. Expected ${
+          currentSession.term === "Spring" ? "Fall" : "Spring"
+        } ${
+          currentSession.term === "Spring"
+            ? currentSession.year
+            : Number(currentSession.year) + 1
+        }.`,
       });
     }
 
@@ -101,11 +93,6 @@ export const getNextSession = async (req, res) => {
     });
   }
 };
-
-/* =========================================================
-   CREATE BATCH
-========================================================= */
-
 export const createBatch = async (req, res) => {
   const session = await mongoose.startSession();
 
@@ -137,28 +124,22 @@ export const createBatch = async (req, res) => {
         message: "Invalid startSessionId",
       });
     }
-
-    /*
-      totalSemesters is NEVER trusted from the frontend.
-      It's derived server-side from the DegreeClass's duration
-      (in years) — 2 semesters per year.
-    */
-
+    if (String(startSession.degreeClassId) !== String(degreeClass._id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Selected start session does not belong to this degree class",
+      });
+    }
     if (!degreeClass.duration || degreeClass.duration <= 0) {
       return res.status(400).json({
         success: false,
         message: "Selected degree class does not have a valid duration.",
       });
     }
-
     const totalSemesters = degreeClass.duration * 2;
-
-    /* departmentId is NEVER trusted from the frontend — always derived from the DegreeClass */
 
     const departmentId =
       degreeClass.departmentId?._id || degreeClass.departmentId;
-
-    /* All active shifts of this DegreeClass — one Batch will be created per shift */
 
     const shifts = await Shift.find({
       degreeClassId,
@@ -172,20 +153,20 @@ export const createBatch = async (req, res) => {
       });
     }
 
-    /* Skip shifts that already have a batch for this class + session */
-
     const existingBatches = await Batch.find({
       degreeClassId,
       startSessionId,
-      shiftId: { $in: shifts.map((s) => s._id) },
+      shiftId: {
+        $in: shifts.map((s) => s._id),
+      },
     }).select("shiftId");
 
     const shiftsWithExistingBatch = new Set(
-      existingBatches.map((b) => String(b.shiftId))
+      existingBatches.map((b) => String(b.shiftId)),
     );
 
     const shiftsToCreate = shifts.filter(
-      (shift) => !shiftsWithExistingBatch.has(String(shift._id))
+      (shift) => !shiftsWithExistingBatch.has(String(shift._id)),
     );
 
     if (!shiftsToCreate.length) {
@@ -195,19 +176,6 @@ export const createBatch = async (req, res) => {
           "Batches already exist for all shifts of this class and session.",
       });
     }
-
-    /*
-      Create one Batch per remaining shift, all inside a single transaction —
-      either every batch (+ its semester log) is created, or none are.
-
-      FALLBACK: transactions only work on a replica set / mongos. On a
-      standalone MongoDB (common in local dev) they fail with code 20
-      ("Transaction numbers are only allowed on a replica set member or
-      mongos"). In that case we fall back to plain sequential inserts
-      with a manual best-effort rollback if something fails midway —
-      still safe, just not atomic at the storage-engine level.
-    */
-
     let createdBatchIds = [];
 
     const runCreation = async (useSession) => {
@@ -223,7 +191,7 @@ export const createBatch = async (req, res) => {
           currentSemester: 1,
           status: "active",
         })),
-        insertOptions
+        insertOptions,
       );
 
       createdBatchIds = batchDocs.map((b) => b._id);
@@ -235,20 +203,26 @@ export const createBatch = async (req, res) => {
             sessionId: startSessionId,
             semester: 1,
           })),
-          insertOptions
+          insertOptions,
         );
       } catch (logErr) {
         if (!useSession) {
-          // Manual rollback since there's no transaction to abort
-          await Batch.deleteMany({ _id: { $in: createdBatchIds } });
+          await Batch.deleteMany({
+            _id: {
+              $in: createdBatchIds,
+            },
+          });
+
           createdBatchIds = [];
         }
+
         throw logErr;
       }
     };
 
     const isTransactionsUnsupported = (err) => {
       const msg = String(err?.message || err?.errmsg || "");
+
       return (
         err?.code === 20 ||
         err?.codeName === "IllegalOperation" ||
@@ -268,16 +242,21 @@ export const createBatch = async (req, res) => {
     }
 
     const populatedBatches = await Batch.find({
-      _id: { $in: createdBatchIds },
+      _id: {
+        $in: createdBatchIds,
+      },
     })
       .populate({
         path: "departmentId",
         select: "name code campusId",
-        populate: { path: "campusId", select: "name code" },
+        populate: {
+          path: "campusId",
+          select: "name code",
+        },
       })
-      .populate("degreeClassId", "name code")
+      .populate("degreeClassId", "name code duration")
       .populate("shiftId", "name")
-      .populate("startSessionId", "name term year startDate endDate");
+      .populate("startSessionId", "name term year degreeClassId");
 
     return res.status(201).json({
       success: true,
@@ -290,7 +269,7 @@ export const createBatch = async (req, res) => {
       message: cleanErrorMessage(err),
     });
   } finally {
-    session.endSession();
+    await session.endSession();
   }
 };
 
@@ -300,13 +279,8 @@ export const createBatch = async (req, res) => {
 
 export const getBatches = async (req, res) => {
   try {
-    const {
-      departmentId,
-      degreeClassId,
-      shiftId,
-      status,
-      currentSemester,
-    } = req.query;
+    const { departmentId, degreeClassId, shiftId, status, currentSemester } =
+      req.query;
 
     const filter = {};
 
@@ -326,7 +300,6 @@ export const getBatches = async (req, res) => {
       filter.status = status;
     }
 
-    // e.g. ?currentSemester=1 -> only "new" batches that are still in their first semester
     if (currentSemester) {
       filter.currentSemester = Number(currentSemester);
     }
@@ -335,20 +308,14 @@ export const getBatches = async (req, res) => {
       .populate({
         path: "departmentId",
         select: "name code campusId",
-        populate: { path: "campusId", select: "name code" },
+        populate: {
+          path: "campusId",
+          select: "name code",
+        },
       })
-      .populate(
-        "degreeClassId",
-        "name code"
-      )
-      .populate(
-        "shiftId",
-        "name degreeClassId"
-      )
-      .populate(
-        "startSessionId",
-        "name term year startDate endDate"
-      )
+      .populate("degreeClassId", "name code duration")
+      .populate("shiftId", "name degreeClassId")
+      .populate("startSessionId", "name term year degreeClassId")
       .sort({
         createdAt: -1,
       });
@@ -365,31 +332,20 @@ export const getBatches = async (req, res) => {
   }
 };
 
-/* =========================================================
-   GET SINGLE BATCH
-========================================================= */
-
 export const getBatchById = async (req, res) => {
   try {
-    const batch =
-      await Batch.findById(req.params.id)
-        .populate({
-          path: "departmentId",
-          select: "name code campusId",
-          populate: { path: "campusId", select: "name code" },
-        })
-        .populate(
-          "degreeClassId",
-          "name code"
-        )
-        .populate(
-          "shiftId",
-          "name degreeClassId"
-        )
-        .populate(
-          "startSessionId",
-          "name term year startDate endDate"
-        );
+    const batch = await Batch.findById(req.params.id)
+      .populate({
+        path: "departmentId",
+        select: "name code campusId",
+        populate: {
+          path: "campusId",
+          select: "name code",
+        },
+      })
+      .populate("degreeClassId", "name code duration")
+      .populate("shiftId", "name degreeClassId")
+      .populate("startSessionId", "name term year degreeClassId");
 
     if (!batch) {
       return res.status(404).json({
@@ -410,17 +366,9 @@ export const getBatchById = async (req, res) => {
   }
 };
 
-/* =========================================================
-   GET BATCH SEMESTERS
-========================================================= */
-
-export const getBatchSemesters = async (
-  req,
-  res
-) => {
+export const getBatchSemesters = async (req, res) => {
   try {
-    const batch =
-      await Batch.findById(req.params.id);
+    const batch = await Batch.findById(req.params.id);
 
     if (!batch) {
       return res.status(404).json({
@@ -429,49 +377,65 @@ export const getBatchSemesters = async (
       });
     }
 
-    const completed = [];
+    const logs = await BatchSemesterLog.find({
+      batchId: batch._id,
+    })
+      .populate("sessionId", "name term year degreeClassId")
+      .sort({
+        semester: 1,
+      });
 
-    for (
-      let i = 1;
-      i < batch.currentSemester;
-      i++
-    ) {
-      completed.push(i);
+    const logMap = new Map();
+
+    for (const log of logs) {
+      logMap.set(Number(log.semester), log);
     }
 
-    const pending = [];
+    const semesters = [];
 
-    for (
-      let i = batch.currentSemester + 1;
-      i <= batch.totalSemesters;
-      i++
-    ) {
-      pending.push(i);
+    for (let semester = 1; semester <= batch.totalSemesters; semester++) {
+      let status = "pending";
+
+      if (batch.status === "completed" || semester < batch.currentSemester) {
+        status = "completed";
+      } else if (semester === batch.currentSemester) {
+        status = "active";
+      }
+
+      const log = logMap.get(semester);
+
+      semesters.push({
+        semester,
+        status,
+
+        session: log?.sessionId
+          ? {
+              _id: log.sessionId._id,
+              name: log.sessionId.name,
+              term: log.sessionId.term,
+              year: log.sessionId.year,
+            }
+          : null,
+
+        logId: log?._id || null,
+
+        createdAt: log?.createdAt || null,
+
+        updatedAt: log?.updatedAt || null,
+      });
     }
-
-    const logs =
-      await BatchSemesterLog.find({
-        batchId: batch._id,
-      })
-        .populate(
-          "sessionId",
-          "name term year startDate endDate"
-        )
-        .sort({
-          semester: 1,
-        });
+    const currentLog = logMap.get(batch.currentSemester);
 
     let nextExpectedSession = null;
 
-    if (batch.status !== "completed") {
-      const lastLog =
-        logs[logs.length - 1];
+    if (
+      batch.status !== "completed" &&
+      batch.currentSemester < batch.totalSemesters
+    ) {
+      const currentSession = currentLog?.sessionId;
 
-      if (lastLog?.sessionId) {
-        nextExpectedSession =
-          await findNextSession(
-            lastLog.sessionId
-          );
+      if (currentSession) {
+        nextExpectedSession = await findNextSession(currentSession);
       }
     }
 
@@ -479,20 +443,21 @@ export const getBatchSemesters = async (
       success: true,
 
       data: {
-        completed,
+        batchId: batch._id,
 
-        current:
-          batch.status === "completed"
-            ? null
-            : batch.currentSemester,
+        totalSemesters: batch.totalSemesters,
 
-        pending,
+        currentSemester: batch.currentSemester,
 
         status: batch.status,
 
-        history: logs,
+        currentSession: currentLog?.sessionId || null,
 
         nextExpectedSession,
+
+        semesters,
+
+        history: logs,
       },
     });
   } catch (err) {
@@ -503,26 +468,9 @@ export const getBatchSemesters = async (
   }
 };
 
-/* =========================================================
-   ADVANCE BATCH
-   PUT /api/batches/:id/advance
-
-   Body optional:
-   {}
-   
-   OR manually:
-   {
-      sessionId: "..."
-   }
-========================================================= */
-
-export const advanceBatch = async (
-  req,
-  res
-) => {
+export const advanceBatch = async (req, res) => {
   try {
-    const batch =
-      await Batch.findById(req.params.id);
+    const batch = await Batch.findById(req.params.id);
 
     if (!batch) {
       return res.status(404).json({
@@ -534,149 +482,172 @@ export const advanceBatch = async (
     if (batch.status === "completed") {
       return res.status(400).json({
         success: false,
-        message:
-          "This batch has already completed all semesters",
+        message: "This batch has already completed all semesters",
       });
     }
 
-    /* Already at final semester */
+    const currentLog = await BatchSemesterLog.findOne({
+      batchId: batch._id,
+      semester: batch.currentSemester,
+    }).populate("sessionId");
 
-    if (
-      batch.currentSemester >=
-      batch.totalSemesters
-    ) {
+    if (!currentLog || !currentLog.sessionId) {
+      return res.status(400).json({
+        success: false,
+        message: "Current semester session could not be found for this batch",
+      });
+    }
+
+    const currentSession = currentLog.sessionId;
+
+    if (batch.currentSemester >= batch.totalSemesters) {
       batch.status = "completed";
 
       await batch.save();
 
       return res.json({
         success: true,
-        message:
-          "Batch marked as completed",
-        data: batch,
+
+        message: "Batch has completed all semesters",
+
+        data: {
+          batch,
+
+          completedSemester: batch.currentSemester,
+
+          completedSession: {
+            _id: currentSession._id,
+            name: currentSession.name,
+            term: currentSession.term,
+            year: currentSession.year,
+          },
+        },
       });
     }
 
-    let { sessionId } = req.body;
+    const nextSemester = batch.currentSemester + 1;
+
+    let nextSession;
 
     /* =====================================================
        MANUAL SESSION
     ===================================================== */
 
-    if (sessionId) {
-      const session =
-        await Session.findById(sessionId);
+    if (req.body?.sessionId) {
+      nextSession = await Session.findById(req.body.sessionId);
 
-      if (!session) {
+      if (!nextSession) {
         return res.status(400).json({
           success: false,
           message: "Invalid sessionId",
         });
       }
-    }
 
-    /* =====================================================
-       AUTOMATIC SESSION
-    ===================================================== */
+      /* Must belong to same DegreeClass */
 
-    else {
-      const lastLog =
-        await BatchSemesterLog.findOne({
-          batchId: batch._id,
-        })
-          .sort({
-            semester: -1,
-          })
-          .populate("sessionId");
-
-      const currentSession =
-        lastLog?.sessionId;
-
-      if (!currentSession) {
+      if (String(nextSession.degreeClassId) !== String(batch.degreeClassId)) {
         return res.status(400).json({
           success: false,
           message:
-            "Could not determine current session for this batch.",
+            "Selected session does not belong to this batch's degree class",
         });
       }
 
-      const nextSession =
-        await findNextSession(
-          currentSession
-        );
+      /* Validate exact next term/year */
+
+      let expectedTerm;
+      let expectedYear = Number(currentSession.year);
+
+      if (currentSession.term === "Spring") {
+        expectedTerm = "Fall";
+      } else {
+        expectedTerm = "Spring";
+        expectedYear += 1;
+      }
+
+      if (
+        nextSession.term !== expectedTerm ||
+        Number(nextSession.year) !== expectedYear
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid next session. Expected ${expectedTerm} ${expectedYear}`,
+        });
+      }
+    } else {
+      nextSession = await findNextSession(currentSession);
 
       if (!nextSession) {
         return res.status(400).json({
           success: false,
-          message:
-            `No academic session found after "${currentSession.name}". Please create the next academic session first.`,
+          message: `Next session not found. Expected ${
+            currentSession.term === "Spring" ? "Fall" : "Spring"
+          } ${
+            currentSession.term === "Spring"
+              ? currentSession.year
+              : Number(currentSession.year) + 1
+          }`,
         });
       }
+    }
+    const existingNextLog = await BatchSemesterLog.findOne({
+      batchId: batch._id,
+      semester: nextSemester,
+    });
 
-      sessionId = nextSession._id;
+    if (existingNextLog) {
+      return res.status(400).json({
+        success: false,
+        message: `Semester ${nextSemester} has already been assigned to this batch`,
+      });
     }
 
-    /* =====================================================
-       ADVANCE
-    ===================================================== */
-
-    const nextSemester =
-      batch.currentSemester + 1;
-
-    batch.currentSemester =
-      nextSemester;
-
-    if (
-      nextSemester >=
-      batch.totalSemesters
-    ) {
-      /*
-        Is waqt batch semester N par hai,
-        isliye abhi completed nahi hoga.
-        Final semester complete hone ke baad
-        next advance request par completed hoga.
-      */
-    }
-
+    batch.currentSemester = nextSemester;
+    batch.status = "active";
     await batch.save();
-
-    /* =====================================================
-       HISTORY
-    ===================================================== */
-
-    await BatchSemesterLog.findOneAndUpdate(
-      {
-        batchId: batch._id,
-        sessionId,
-      },
-      {
-        batchId: batch._id,
-        sessionId,
-        semester: nextSemester,
-      },
-      {
-        upsert: true,
-        new: true,
-      }
-    );
-
-    const usedSession =
-      await Session.findById(
-        sessionId
-      ).select(
-        "name term year startDate endDate"
-      );
+    const semesterLog = await BatchSemesterLog.create({
+      batchId: batch._id,
+      sessionId: nextSession._id,
+      semester: nextSemester,
+    });
+    const updatedBatch = await Batch.findById(batch._id)
+      .populate("degreeClassId", "name code duration")
+      .populate("shiftId", "name")
+      .populate("startSessionId", "name term year");
 
     return res.json({
       success: true,
 
-      message:
-        `Batch advanced to semester ${nextSemester} (${usedSession?.name || ""})`,
+      message: `Batch advanced to semester ${nextSemester} (${nextSession.name})`,
 
       data: {
-        batch,
-        session: usedSession,
-        semester: nextSemester,
+        batch: updatedBatch,
+
+        currentSemester: nextSemester,
+
+        currentSession: {
+          _id: nextSession._id,
+          name: nextSession.name,
+          term: nextSession.term,
+          year: nextSession.year,
+        },
+
+        previousSemester: {
+          semester: nextSemester - 1,
+
+          session: {
+            _id: currentSession._id,
+            name: currentSession.name,
+            term: currentSession.term,
+            year: currentSession.year,
+          },
+
+          status: "completed",
+        },
+
+        currentSemesterStatus: "active",
+
+        semesterLog,
       },
     });
   } catch (err) {
@@ -686,39 +657,19 @@ export const advanceBatch = async (
     });
   }
 };
-
-/* =========================================================
-   UPDATE BATCH
-========================================================= */
-
-export const updateBatch = async (
-  req,
-  res
-) => {
+export const updateBatch = async (req, res) => {
   try {
-    const {
-      degreeClassId,
-      startSessionId,
-    } = req.body;
-
-    // departmentId, shiftId, totalSemesters are NEVER accepted from the frontend —
-    // they are always derived server-side, same as in createBatch.
-
-    const batch =
-      await Batch.findById(req.params.id);
-
+    const { degreeClassId, startSessionId } = req.body;
+    const batch = await Batch.findById(req.params.id);
     if (!batch) {
       return res.status(404).json({
         success: false,
         message: "Batch not found",
       });
     }
-
     const updateData = {};
-
     if (degreeClassId) {
-      const degreeClass =
-        await DegreeClass.findById(degreeClassId);
+      const degreeClass = await DegreeClass.findById(degreeClassId);
 
       if (!degreeClass) {
         return res.status(400).json({
@@ -734,12 +685,7 @@ export const updateBatch = async (
         });
       }
 
-      // Existing shift must still belong to the new DegreeClass —
-      // the API has no way to pick a different shift on its own,
-      // so switching class only works if the current shift is shared
-      // by that class too. Otherwise the caller must create a new batch.
-      const currentShift =
-        await Shift.findById(batch.shiftId);
+      const currentShift = await Shift.findById(batch.shiftId);
 
       if (
         !currentShift ||
@@ -753,8 +699,10 @@ export const updateBatch = async (
       }
 
       updateData.degreeClassId = degreeClassId;
+
       updateData.departmentId =
         degreeClass.departmentId?._id || degreeClass.departmentId;
+
       updateData.totalSemesters = degreeClass.duration * 2;
     }
 
@@ -768,35 +716,36 @@ export const updateBatch = async (
         });
       }
 
+      const finalDegreeClassId = degreeClassId || batch.degreeClassId;
+
+      /* Session must belong to same DegreeClass */
+
+      if (String(session.degreeClassId) !== String(finalDegreeClassId)) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Selected start session does not belong to this degree class",
+        });
+      }
+
       updateData.startSessionId = startSessionId;
     }
 
-    const updated =
-      await Batch.findByIdAndUpdate(
-        req.params.id,
-        updateData,
-        {
-          new: true,
-          runValidators: true,
-        }
-      )
-        .populate({
-          path: "departmentId",
-          select: "name code campusId",
-          populate: { path: "campusId", select: "name code" },
-        })
-        .populate(
-          "degreeClassId",
-          "name code"
-        )
-        .populate(
-          "shiftId",
-          "name"
-        )
-        .populate(
-          "startSessionId",
-          "name term year startDate endDate"
-        );
+    const updated = await Batch.findByIdAndUpdate(req.params.id, updateData, {
+      new: true,
+      runValidators: true,
+    })
+      .populate({
+        path: "departmentId",
+        select: "name code campusId",
+        populate: {
+          path: "campusId",
+          select: "name code",
+        },
+      })
+      .populate("degreeClassId", "name code duration")
+      .populate("shiftId", "name")
+      .populate("startSessionId", "name term year degreeClassId");
 
     return res.json({
       success: true,
@@ -811,19 +760,9 @@ export const updateBatch = async (
   }
 };
 
-/* =========================================================
-   DELETE BATCH
-========================================================= */
-
-export const deleteBatch = async (
-  req,
-  res
-) => {
+export const deleteBatch = async (req, res) => {
   try {
-    const batch =
-      await Batch.findByIdAndDelete(
-        req.params.id
-      );
+    const batch = await Batch.findByIdAndDelete(req.params.id);
 
     if (!batch) {
       return res.status(404).json({
@@ -838,8 +777,7 @@ export const deleteBatch = async (
 
     return res.json({
       success: true,
-      message:
-        "Batch and semester history deleted successfully",
+      message: "Batch and semester history deleted successfully",
     });
   } catch (err) {
     return res.status(400).json({
@@ -848,76 +786,86 @@ export const deleteBatch = async (
     });
   }
 };
-
-/* =========================================================
-   GET FULL HIERARCHY
-   GET /api/hierarchy
-
-   Campus -> Departments -> Degree Classes -> Shifts -> Batches
-
-   Sab collections ek ek dafa fetch karke, phir JS mein
-   in-memory group kar rahe hain (5 alag N+1 queries chalane
-   ke bajaye) — chahe data zyada ho, ye fast rehta hai.
-========================================================= */
-
 export const getHierarchy = async (req, res) => {
   try {
     const [campuses, departments, degreeClasses, shifts, batches] =
       await Promise.all([
         Campus.find().sort({ name: 1 }).lean(),
+
         Department.find().sort({ name: 1 }).lean(),
+
         DegreeClass.find().sort({ name: 1 }).lean(),
+
         Shift.find().sort({ name: 1 }).lean(),
+
         Batch.find()
-          .populate("startSessionId", "name term year startDate endDate")
-          .sort({ createdAt: -1 })
+          .populate("startSessionId", "name term year degreeClassId")
+          .sort({
+            createdAt: -1,
+          })
           .lean(),
       ]);
 
-    // Batches grouped by shiftId
     const batchesByShift = {};
+
     for (const batch of batches) {
       const key = String(batch.shiftId);
-      if (!batchesByShift[key]) batchesByShift[key] = [];
+
+      if (!batchesByShift[key]) {
+        batchesByShift[key] = [];
+      }
 
       const degreeClass = degreeClasses.find(
-        (dc) => String(dc._id) === String(batch.degreeClassId)
+        (dc) => String(dc._id) === String(batch.degreeClassId),
       );
 
       batchesByShift[key].push({
         _id: batch._id,
+
         name:
           degreeClass && batch.startSessionId
             ? `${degreeClass.code}-${batch.startSessionId.year}`
             : null,
+
         startSessionId: batch.startSessionId,
+
         totalSemesters: batch.totalSemesters,
+
         currentSemester: batch.currentSemester,
+
         status: batch.status,
+
         createdAt: batch.createdAt,
+
         updatedAt: batch.updatedAt,
       });
     }
 
-    // Shifts grouped by degreeClassId, each with its batches attached
     const shiftsByClass = {};
+
     for (const shift of shifts) {
       const key = String(shift.degreeClassId);
-      if (!shiftsByClass[key]) shiftsByClass[key] = [];
+
+      if (!shiftsByClass[key]) {
+        shiftsByClass[key] = [];
+      }
 
       shiftsByClass[key].push({
         _id: shift._id,
         name: shift.name,
         isActive: shift.isActive,
+
         batches: batchesByShift[String(shift._id)] || [],
       });
     }
-
-    // Degree classes grouped by departmentId, each with its shifts attached
     const classesByDepartment = {};
+
     for (const degreeClass of degreeClasses) {
       const key = String(degreeClass.departmentId);
-      if (!classesByDepartment[key]) classesByDepartment[key] = [];
+
+      if (!classesByDepartment[key]) {
+        classesByDepartment[key] = [];
+      }
 
       classesByDepartment[key].push({
         _id: degreeClass._id,
@@ -925,26 +873,28 @@ export const getHierarchy = async (req, res) => {
         code: degreeClass.code,
         duration: degreeClass.duration,
         isActive: degreeClass.isActive,
+
         shifts: shiftsByClass[String(degreeClass._id)] || [],
       });
     }
-
-    // Departments grouped by campusId, each with its classes attached
     const departmentsByCampus = {};
+
     for (const department of departments) {
       const key = String(department.campusId);
-      if (!departmentsByCampus[key]) departmentsByCampus[key] = [];
+
+      if (!departmentsByCampus[key]) {
+        departmentsByCampus[key] = [];
+      }
 
       departmentsByCampus[key].push({
         _id: department._id,
         name: department.name,
         code: department.code,
         description: department.description,
+
         classes: classesByDepartment[String(department._id)] || [],
       });
     }
-
-    // Final tree: Campus at the top
     const tree = campuses.map((campus) => ({
       _id: campus._id,
       name: campus.name,
@@ -952,6 +902,7 @@ export const getHierarchy = async (req, res) => {
       location: campus.location,
       description: campus.description,
       isActive: campus.isActive,
+
       departments: departmentsByCampus[String(campus._id)] || [],
     }));
 
@@ -966,34 +917,53 @@ export const getHierarchy = async (req, res) => {
     });
   }
 };
-
-/* =========================================================
-   GET CREATE-BATCH FORM OPTIONS
-   GET /api/batches/form-options
-
-   For the "Create Batch" form:
-   Campus -> Departments -> Degree Classes (each with its
-   existing Shifts, for reference) + a separate global list
-   of Sessions (Session is not scoped to any class, so it's
-   returned once at the top level, not nested).
-========================================================= */
-
 export const getBatchFormOptions = async (req, res) => {
   try {
-    const [campuses, departments, degreeClasses, shifts, sessions] =
-      await Promise.all([
-        Campus.find({ isActive: true }).sort({ name: 1 }).lean(),
-        Department.find().sort({ name: 1 }).lean(),
-        DegreeClass.find({ isActive: true }).sort({ name: 1 }).lean(),
-        Shift.find({ isActive: true }).sort({ name: 1 }).lean(),
-        Session.find().sort({ startDate: 1 }).lean(),
-      ]);
+    const { degreeClassId } = req.query;
 
-    // Shifts grouped by degreeClassId
+    const [campuses, departments, degreeClasses, shifts] = await Promise.all([
+      Campus.find({
+        isActive: true,
+      })
+        .sort({ name: 1 })
+        .lean(),
+
+      Department.find().sort({ name: 1 }).lean(),
+
+      DegreeClass.find({
+        isActive: true,
+      })
+        .sort({ name: 1 })
+        .lean(),
+
+      Shift.find({
+        isActive: true,
+      })
+        .sort({ name: 1 })
+        .lean(),
+    ]);
+
+    const sessionFilter = {};
+
+    if (degreeClassId) {
+      sessionFilter.degreeClassId = degreeClassId;
+    }
+
+    const sessions = await Session.find(sessionFilter)
+      .sort({
+        year: 1,
+        term: 1,
+      })
+      .lean();
+
     const shiftsByClass = {};
+
     for (const shift of shifts) {
       const key = String(shift.degreeClassId);
-      if (!shiftsByClass[key]) shiftsByClass[key] = [];
+
+      if (!shiftsByClass[key]) {
+        shiftsByClass[key] = [];
+      }
 
       shiftsByClass[key].push({
         _id: shift._id,
@@ -1001,53 +971,59 @@ export const getBatchFormOptions = async (req, res) => {
       });
     }
 
-    // Degree classes grouped by departmentId, each with its shifts attached
     const classesByDepartment = {};
+
     for (const degreeClass of degreeClasses) {
       const key = String(degreeClass.departmentId);
-      if (!classesByDepartment[key]) classesByDepartment[key] = [];
+
+      if (!classesByDepartment[key]) {
+        classesByDepartment[key] = [];
+      }
 
       classesByDepartment[key].push({
         _id: degreeClass._id,
         name: degreeClass.name,
         code: degreeClass.code,
         duration: degreeClass.duration,
+
         shifts: shiftsByClass[String(degreeClass._id)] || [],
       });
     }
-
-    // Departments grouped by campusId, each with its classes attached
     const departmentsByCampus = {};
+
     for (const department of departments) {
       const key = String(department.campusId);
-      if (!departmentsByCampus[key]) departmentsByCampus[key] = [];
+
+      if (!departmentsByCampus[key]) {
+        departmentsByCampus[key] = [];
+      }
 
       departmentsByCampus[key].push({
         _id: department._id,
         name: department.name,
         code: department.code,
+
         classes: classesByDepartment[String(department._id)] || [],
       });
     }
-
-    // Final tree: Campus at the top
     const tree = campuses.map((campus) => ({
       _id: campus._id,
       name: campus.name,
       code: campus.code,
+
       departments: departmentsByCampus[String(campus._id)] || [],
     }));
-
     return res.json({
       success: true,
+
       data: tree,
+
       sessions: sessions.map((s) => ({
         _id: s._id,
         name: s.name,
         term: s.term,
         year: s.year,
-        startDate: s.startDate,
-        endDate: s.endDate,
+        degreeClassId: s.degreeClassId,
       })),
     });
   } catch (err) {

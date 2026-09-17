@@ -18,11 +18,6 @@ router.post(
   createBatchSemesterSubject
 );
 
-
-/*
-  GET ALL
-  GET /api/batch-semester-subjects
-*/
 router.get(
   "/",
   getBatchSemesterSubjects

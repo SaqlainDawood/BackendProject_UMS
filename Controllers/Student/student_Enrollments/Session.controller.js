@@ -1,13 +1,18 @@
 import Session from "../../../Models/Session.js";
 import DegreeClass from "../../../Models/Degreeclass.js";
 
+
+// =========================================================
+// CLEAN ERROR
+// =========================================================
+
 function cleanError(err) {
   if (err.name === "CastError") {
     return `Invalid ${err.path} — please provide a valid ID`;
   }
 
   if (err.code === 11000) {
-    return "This session already exists";
+    return "This session already exists for this degree class";
   }
 
   if (err.name === "ValidationError") {
@@ -19,35 +24,37 @@ function cleanError(err) {
   return err.message || "Something went wrong";
 }
 
-/* =========================================================
-   GENERATE SESSIONS FOR DEGREE CLASS
-   Spring -> Fall -> Spring -> Fall...
-   
-   Example:
-   4 Years = 8 Semesters
 
-   Spring 2026
-   Fall 2026
-   Spring 2027
-   Fall 2027
-   Spring 2028
-   Fall 2028
-   Spring 2029
-   Fall 2029
-========================================================= */
+// =========================================================
+// GENERATE SESSIONS FOR DEGREE CLASS
+//
+// Example:
+// Degree Class = BSIT
+// Duration = 4 years
+// Start Year = 2026
+//
+// Semester 1 -> Spring 2026
+// Semester 2 -> Fall 2026
+// Semester 3 -> Spring 2027
+// Semester 4 -> Fall 2027
+// Semester 5 -> Spring 2028
+// Semester 6 -> Fall 2028
+// Semester 7 -> Spring 2029
+// Semester 8 -> Fall 2029
+// =========================================================
 
-export const generateSessionsForDegreeClass = async (
-  req,
-  res
-) => {
+export const generateSessionsForDegreeClass = async (req, res) => {
   try {
     const { degreeClassId, startYear } = req.body;
 
-    if (!degreeClassId || !startYear) {
+    // -----------------------------------------------------
+    // VALIDATION
+    // -----------------------------------------------------
+
+    if (!degreeClassId || startYear === undefined) {
       return res.status(400).json({
         success: false,
-        message:
-          "degreeClassId and startYear are required",
+        message: "degreeClassId and startYear are required",
       });
     }
 
@@ -60,9 +67,12 @@ export const generateSessionsForDegreeClass = async (
       });
     }
 
-    // Get Degree Class
-    const degreeClass =
-      await DegreeClass.findById(degreeClassId);
+
+    // -----------------------------------------------------
+    // GET DEGREE CLASS
+    // -----------------------------------------------------
+
+    const degreeClass = await DegreeClass.findById(degreeClassId);
 
     if (!degreeClass) {
       return res.status(404).json({
@@ -71,10 +81,14 @@ export const generateSessionsForDegreeClass = async (
       });
     }
 
-    // Duration required
+
+    // -----------------------------------------------------
+    // CHECK DURATION
+    // -----------------------------------------------------
+
     if (
       !degreeClass.duration ||
-      degreeClass.duration <= 0
+      Number(degreeClass.duration) <= 0
     ) {
       return res.status(400).json({
         success: false,
@@ -83,71 +97,100 @@ export const generateSessionsForDegreeClass = async (
       });
     }
 
-    // 1 year = 2 semesters
+
+    // -----------------------------------------------------
+    // TOTAL SEMESTERS
+    // -----------------------------------------------------
+
     const totalSemesters =
       Number(degreeClass.duration) * 2;
+
 
     const created = [];
     const skipped = [];
 
-    /*
-      Starting session is ALWAYS Spring.
 
-      Semester 1 -> Spring
-      Semester 2 -> Fall
-      Semester 3 -> Spring
-      Semester 4 -> Fall
-    */
+    // -----------------------------------------------------
+    // GENERATE SESSION
+    //
+    // Odd semester  = Spring
+    // Even semester = Fall
+    // -----------------------------------------------------
 
     for (
       let semester = 1;
       semester <= totalSemesters;
       semester++
     ) {
+
       const term =
         semester % 2 === 1
           ? "Spring"
           : "Fall";
 
-      /*
-        Semester 1 -> startYear
-        Semester 2 -> startYear
-        Semester 3 -> startYear + 1
-        Semester 4 -> startYear + 1
-      */
 
       const sessionYear =
         year + Math.floor((semester - 1) / 2);
 
+
       const sessionName =
         `${term} ${sessionYear}`;
 
-      // Check existing session
+
+      // ---------------------------------------------------
+      // CHECK EXISTING SESSION
+      // ---------------------------------------------------
+
       const existingSession =
         await Session.findOne({
+          degreeClassId: degreeClass._id,
           term,
           year: sessionYear,
         });
 
+
       if (existingSession) {
-        skipped.push(existingSession.name);
+        skipped.push({
+          semester,
+          sessionId: existingSession._id,
+          name: existingSession.name,
+        });
+
         continue;
       }
 
+
+      // ---------------------------------------------------
+      // CREATE SESSION
+      // ---------------------------------------------------
+
       const session = await Session.create({
         name: sessionName,
+        degreeClassId: degreeClass._id,
         term,
         year: sessionYear,
         isActive: false,
       });
 
-      created.push(session);
+
+      created.push({
+        semester,
+        session,
+      });
     }
+
+
+    // -----------------------------------------------------
+    // RESPONSE
+    // -----------------------------------------------------
 
     return res.status(201).json({
       success: true,
+
       message:
-        `${created.length} session(s) created, ${skipped.length} skipped`,
+        `${created.length} session(s) created, ` +
+        `${skipped.length} skipped`,
+
       data: {
         degreeClass: {
           id: degreeClass._id,
@@ -161,9 +204,11 @@ export const generateSessionsForDegreeClass = async (
         startSession: `Spring ${year}`,
 
         created,
+
         skipped,
       },
     });
+
   } catch (err) {
     return res.status(400).json({
       success: false,
@@ -172,30 +217,67 @@ export const generateSessionsForDegreeClass = async (
   }
 };
 
-/* =========================================================
-   CREATE SINGLE SESSION
-========================================================= */
+
+// =========================================================
+// CREATE SINGLE SESSION
+// =========================================================
 
 export const createSession = async (req, res) => {
   try {
+
     const {
+      degreeClassId,
       name,
       term,
       year,
       isActive,
     } = req.body;
 
-    if (!name || !term || !year) {
+
+    // -----------------------------------------------------
+    // VALIDATION
+    // -----------------------------------------------------
+
+    if (
+      !degreeClassId ||
+      !name ||
+      !term ||
+      !year
+    ) {
       return res.status(400).json({
         success: false,
         message:
-          "name, term and year are required",
+          "degreeClassId, name, term and year are required",
       });
     }
 
-    if (isActive) {
+
+    // -----------------------------------------------------
+    // CHECK DEGREE CLASS
+    // -----------------------------------------------------
+
+    const degreeClass =
+      await DegreeClass.findById(degreeClassId);
+
+    if (!degreeClass) {
+      return res.status(404).json({
+        success: false,
+        message: "Degree Class not found",
+      });
+    }
+
+
+    // -----------------------------------------------------
+    // ACTIVE SESSION
+    //
+    // Only one active session per DegreeClass
+    // -----------------------------------------------------
+
+    if (isActive === true) {
       await Session.updateMany(
-        {},
+        {
+          degreeClassId: degreeClass._id,
+        },
         {
           $set: {
             isActive: false,
@@ -204,17 +286,25 @@ export const createSession = async (req, res) => {
       );
     }
 
+
+    // -----------------------------------------------------
+    // CREATE
+    // -----------------------------------------------------
+
     const session = await Session.create({
+      degreeClassId: degreeClass._id,
       name,
       term,
       year,
       isActive: Boolean(isActive),
     });
 
+
     return res.status(201).json({
       success: true,
       data: session,
     });
+
   } catch (err) {
     return res.status(400).json({
       success: false,
@@ -223,37 +313,58 @@ export const createSession = async (req, res) => {
   }
 };
 
-/* =========================================================
-   GET ALL SESSIONS
-========================================================= */
+
+// =========================================================
+// GET ALL SESSIONS
+//
+// Optional:
+// ?degreeClassId=xxx
+// ?term=Spring
+// ?year=2026
+// =========================================================
 
 export const getSessions = async (req, res) => {
   try {
-    const { term, year } = req.query;
+
+    const {
+      degreeClassId,
+      term,
+      year,
+    } = req.query;
+
 
     const filter = {};
+
+
+    if (degreeClassId) {
+      filter.degreeClassId = degreeClassId;
+    }
+
 
     if (term) {
       filter.term = term;
     }
 
+
     if (year) {
       filter.year = Number(year);
     }
 
-    const sessions = await Session.find(filter)
-      .sort({
-        year: 1,
-        term: 1,
-      });
 
-    /*
-      Custom sorting:
-      Spring first
-      Fall second
-    */
+    const sessions =
+      await Session.find(filter)
+        .populate(
+          "degreeClassId",
+          "name code duration"
+        )
+        .sort({
+          year: 1,
+        });
 
+
+    // Spring before Fall
     sessions.sort((a, b) => {
+
       if (a.year !== b.year) {
         return a.year - b.year;
       }
@@ -262,13 +373,17 @@ export const getSessions = async (req, res) => {
         return 0;
       }
 
-      return a.term === "Spring" ? -1 : 1;
+      return a.term === "Spring"
+        ? -1
+        : 1;
     });
+
 
     return res.json({
       success: true,
       data: sessions,
     });
+
   } catch (err) {
     return res.status(500).json({
       success: false,
@@ -277,31 +392,53 @@ export const getSessions = async (req, res) => {
   }
 };
 
-/* =========================================================
-   CURRENT ACTIVE SESSION
-========================================================= */
 
-export const getCurrentSession = async (
-  req,
-  res
-) => {
+// =========================================================
+// CURRENT ACTIVE SESSION FOR DEGREE CLASS
+//
+// GET:
+// /sessions/current?degreeClassId=xxx
+// =========================================================
+
+export const getCurrentSession = async (req, res) => {
   try {
+
+    const { degreeClassId } = req.query;
+
+
+    if (!degreeClassId) {
+      return res.status(400).json({
+        success: false,
+        message: "degreeClassId is required",
+      });
+    }
+
+
     const session =
       await Session.findOne({
+        degreeClassId,
         isActive: true,
-      });
+      })
+        .populate(
+          "degreeClassId",
+          "name code duration"
+        );
+
 
     if (!session) {
       return res.status(404).json({
         success: false,
-        message: "No active session set",
+        message:
+          "No active session found for this degree class",
       });
     }
+
 
     return res.json({
       success: true,
       data: session,
     });
+
   } catch (err) {
     return res.status(500).json({
       success: false,
@@ -310,17 +447,21 @@ export const getCurrentSession = async (
   }
 };
 
-/* =========================================================
-   GET SINGLE SESSION
-========================================================= */
 
-export const getSessionById = async (
-  req,
-  res
-) => {
+// =========================================================
+// GET SINGLE SESSION
+// =========================================================
+
+export const getSessionById = async (req, res) => {
   try {
+
     const session =
-      await Session.findById(req.params.id);
+      await Session.findById(req.params.id)
+        .populate(
+          "degreeClassId",
+          "name code duration"
+        );
+
 
     if (!session) {
       return res.status(404).json({
@@ -329,10 +470,12 @@ export const getSessionById = async (
       });
     }
 
+
     return res.json({
       success: true,
       data: session,
     });
+
   } catch (err) {
     return res.status(500).json({
       success: false,
@@ -341,24 +484,59 @@ export const getSessionById = async (
   }
 };
 
-/* =========================================================
-   UPDATE SESSION
-========================================================= */
 
-export const updateSession = async (
-  req,
-  res
-) => {
+// =========================================================
+// UPDATE SESSION
+// =========================================================
+
+export const updateSession = async (req, res) => {
   try {
+
     const {
+      degreeClassId,
       name,
       term,
       year,
       isActive,
     } = req.body;
 
-    // Only allowed fields update honge
+
+    const existingSession =
+      await Session.findById(req.params.id);
+
+
+    if (!existingSession) {
+      return res.status(404).json({
+        success: false,
+        message: "Session not found",
+      });
+    }
+
+
+    // -----------------------------------------------------
+    // VALIDATE DEGREE CLASS IF CHANGED
+    // -----------------------------------------------------
+
+    if (degreeClassId !== undefined) {
+
+      const degreeClass =
+        await DegreeClass.findById(degreeClassId);
+
+      if (!degreeClass) {
+        return res.status(404).json({
+          success: false,
+          message: "Degree Class not found",
+        });
+      }
+    }
+
+
     const updateData = {};
+
+
+    if (degreeClassId !== undefined) {
+      updateData.degreeClassId = degreeClassId;
+    }
 
     if (name !== undefined) {
       updateData.name = name;
@@ -369,18 +547,28 @@ export const updateSession = async (
     }
 
     if (year !== undefined) {
-      updateData.year = year;
+      updateData.year = Number(year);
     }
 
     if (isActive !== undefined) {
       updateData.isActive = Boolean(isActive);
     }
 
-    // If this session becomes active,
-    // all other sessions become inactive
+
+    // -----------------------------------------------------
+    // ACTIVE SESSION PER DEGREE CLASS
+    // -----------------------------------------------------
+
     if (isActive === true) {
+
+      const activeDegreeClassId =
+        degreeClassId ||
+        existingSession.degreeClassId;
+
+
       await Session.updateMany(
         {
+          degreeClassId: activeDegreeClassId,
           _id: {
             $ne: req.params.id,
           },
@@ -393,6 +581,7 @@ export const updateSession = async (
       );
     }
 
+
     const session =
       await Session.findByIdAndUpdate(
         req.params.id,
@@ -401,19 +590,18 @@ export const updateSession = async (
           new: true,
           runValidators: true,
         }
-      );
+      )
+        .populate(
+          "degreeClassId",
+          "name code duration"
+        );
 
-    if (!session) {
-      return res.status(404).json({
-        success: false,
-        message: "Session not found",
-      });
-    }
 
     return res.json({
       success: true,
       data: session,
     });
+
   } catch (err) {
     return res.status(400).json({
       success: false,
@@ -422,38 +610,67 @@ export const updateSession = async (
   }
 };
 
-/* =========================================================
-   SESSION STATUS
-========================================================= */
 
-export const getSessionStatus = async (
-  req,
-  res
-) => {
+// =========================================================
+// SESSION STATUS
+//
+// Optional:
+// ?degreeClassId=xxx
+// =========================================================
+
+export const getSessionStatus = async (req, res) => {
   try {
-    const sessions = await Session.find()
-      .sort({
-        year: 1,
-      });
+
+    const { degreeClassId } = req.query;
+
+
+    const filter = {};
+
+    if (degreeClassId) {
+      filter.degreeClassId = degreeClassId;
+    }
+
+
+    const sessions =
+      await Session.find(filter)
+        .populate(
+          "degreeClassId",
+          "name code duration"
+        )
+        .sort({
+          year: 1,
+        });
+
 
     // Spring before Fall
     sessions.sort((a, b) => {
+
       if (a.year !== b.year) {
         return a.year - b.year;
       }
 
-      return a.term === "Spring" ? -1 : 1;
+      if (a.term === b.term) {
+        return 0;
+      }
+
+      return a.term === "Spring"
+        ? -1
+        : 1;
     });
+
 
     const currentSession =
       sessions.find(
         (session) => session.isActive
       );
 
+
     return res.json({
       success: true,
+
       data: {
         sessions,
+
         currentSession:
           currentSession || null,
 
@@ -464,6 +681,7 @@ export const getSessionStatus = async (
           currentSession?.name || null,
       },
     });
+
   } catch (err) {
     return res.status(400).json({
       success: false,
@@ -472,19 +690,19 @@ export const getSessionStatus = async (
   }
 };
 
-/* =========================================================
-   DELETE SESSION
-========================================================= */
 
-export const deleteSession = async (
-  req,
-  res
-) => {
+// =========================================================
+// DELETE SESSION
+// =========================================================
+
+export const deleteSession = async (req, res) => {
   try {
+
     const session =
       await Session.findByIdAndDelete(
         req.params.id
       );
+
 
     if (!session) {
       return res.status(404).json({
@@ -493,10 +711,12 @@ export const deleteSession = async (
       });
     }
 
+
     return res.json({
       success: true,
       message: "Session deleted",
     });
+
   } catch (err) {
     return res.status(500).json({
       success: false,

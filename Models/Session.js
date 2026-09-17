@@ -5,8 +5,14 @@ const sessionSchema = new mongoose.Schema(
     name: {
       type: String,
       required: true,
-      unique: true,
       trim: true,
+    },
+
+    degreeClassId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "DegreeClass",
+      required: true,
+      index: true,
     },
 
     term: {
@@ -29,9 +35,23 @@ const sessionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+/*
+  Same DegreeClass mein:
+  Spring 2026 = one session
+  Fall 2026   = one session
+
+  Lekin different DegreeClass ke liye
+  Spring 2026 alag session ho sakta hai.
+*/
 sessionSchema.index(
-  { term: 1, year: 1 },
-  { unique: true }
+  {
+    degreeClassId: 1,
+    term: 1,
+    year: 1,
+  },
+  {
+    unique: true,
+  }
 );
 
 const Session =
