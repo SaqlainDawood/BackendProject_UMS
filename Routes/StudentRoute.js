@@ -70,7 +70,22 @@ router.post(
 
 router.post(
   "/step3/:studentId",
-  uploadMarksheet.any(),
+  (req, res, next) => {
+    uploadMarksheet.any()(req, res, (err) => {
+      if (err) {
+        console.error("STEP 3 MULTER/CLOUDINARY ERROR:", err);
+
+        return res.status(400).json({
+          success: false,
+          message: err.message || "File upload failed",
+          error: err,
+        });
+      }
+
+      next();
+    });
+  },
+  
   (req, res, next) => {
     req.params.step = "3";
     req.body.studentId = req.params.studentId;
@@ -78,7 +93,6 @@ router.post(
   },
   saveStudentStep
 );
-
 
 router.post(
   "/step4/:id",

@@ -18,11 +18,20 @@ export const upload = multer({
 const marksheetStorage = new CloudinaryStorage({
   cloudinary,
   params: async (req, file) => {
+    const extension = file.originalname
+      .split(".")
+      .pop()
+      .toLowerCase();
+
+    const cleanName = file.originalname
+      .replace(/\.[^/.]+$/, "")
+      .replace(/[^a-zA-Z0-9-_]/g, "-");
+
     return {
       folder: "Student_Marksheets",
-      allowed_formats: ["pdf", "doc", "docx"],
       resource_type: "raw",
-      public_id: `${Date.now()}-${file.originalname}`,
+      public_id: `${Date.now()}-${cleanName}`,
+      format: extension,
     };
   },
 });
