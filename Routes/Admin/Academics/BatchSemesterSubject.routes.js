@@ -8,7 +8,7 @@ import {
   updateBatchSemesterSubject,
   deleteBatchSemesterSubject,
   getTeacherAssignedSubjects,
-} from "../../../Controllers/Admin/Academics/BatchSemesterSubject.controller.js";
+} from "../../../Controllers/Subject/BatchSemesterSubject.controller.js";
 
 const router = express.Router();
 
