@@ -1,7 +1,6 @@
 // models/Attendance.js
 
 import mongoose from 'mongoose';
-
 const attendanceSchema = new mongoose.Schema({
   // Which class (course)
   classId: {
