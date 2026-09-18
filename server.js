@@ -82,6 +82,13 @@ app.use('/api', EnrollmentRoutes);
 // app.use('/api', academicsRoutes);
 app.use('/api', subjectRoutes); 
 
+app.use((err, req, res, next) => {
+  console.error("UNHANDLED ERROR:", err);
+  res.status(500).json({
+    success: false,
+    message: err.message || "Internal server error",
+  });
+});
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "ok",
@@ -90,15 +97,10 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Start the server immediately so Render's port scan succeeds right away,
-// instead of waiting for MongoDB to connect first.
 app.listen(PORT, () => {
     console.log(`Server is Started at http://localhost:${PORT}`);
 });
 
-// Connect to MongoDB in the background. If it fails, log it — routes that
-// need the DB will simply error until it reconnects, but the server itself
-// stays up and Render's health checks keep passing.
 ConnectDB().catch((err) => {
     console.error('Failed to connect to DB:', err?.message || err);
 });
