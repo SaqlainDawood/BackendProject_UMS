@@ -36,8 +36,6 @@ const sessionSchema = new mongoose.Schema(
   }
 );
 
-// Same session allowed in different degree classes
-// But same degree class cannot have same term + year
 sessionSchema.index(
   {
     degreeClassId: 1,

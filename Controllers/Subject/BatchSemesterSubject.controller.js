@@ -1,11 +1,11 @@
 import mongoose from "mongoose";
 
-import BatchSemesterSubject from "../../../Models/BatchSemesterSubject.js";
-import TeacherSubject from "../../../Models/TeacherSubject.js";
+import BatchSemesterSubject from "../../Models/BatchSemesterSubject.js";
+import TeacherSubject from "../../Models/TeacherSubject.js";
 
-import Batch from "../../../Models/Batch.js";
-import Subject from "../../../Models/Subject.js";
-import Teacher from "../../../Models/TeacherModel.js";
+import Batch from "../../Models/Batch.js";
+import Subject from "../../Models/Subject.js";
+import Teacher from "../../Models/TeacherModel.js";
 
 
 /* =========================================================
