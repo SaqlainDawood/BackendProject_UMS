@@ -16,6 +16,10 @@ import { protect } from "../Middleware/authMiddleware.js";
 
 const router = express.Router();
 
+// =====================================================
+// MAIN STEP ROUTE — used by frontend (/api/students/step/:step)
+// =====================================================
+
 router.post(
   "/step/:step",
   (req, res, next) => {
@@ -23,12 +27,30 @@ router.post(
 
     // STEP 1 — Profile Image
     if (step === 1) {
-      return upload.single("profileImage")(req, res, next);
+      return upload.single("profileImage")(req, res, (err) => {
+        if (err) {
+          console.error("STEP 1 UPLOAD ERROR:", err);
+          return res.status(400).json({
+            success: false,
+            message: err.message || "Profile image upload failed",
+          });
+        }
+        next();
+      });
     }
 
     // STEP 3 — Educational Documents
     if (step === 3) {
-      return uploadMarksheet.any()(req, res, next);
+      return uploadMarksheet.any()(req, res, (err) => {
+        if (err) {
+          console.error("STEP 3 MULTER/CLOUDINARY ERROR:", err);
+          return res.status(400).json({
+            success: false,
+            message: err.message || "Marksheet upload failed",
+          });
+        }
+        next();
+      });
     }
 
     // STEP 2 & STEP 4 — No files
@@ -50,7 +72,18 @@ router.post("/cleanup-drafts", cleanupExpiredDrafts);
 
 router.post(
   "/step1",
-  upload.single("profileImage"),
+  (req, res, next) => {
+    upload.single("profileImage")(req, res, (err) => {
+      if (err) {
+        console.error("STEP1 UPLOAD ERROR:", err);
+        return res.status(400).json({
+          success: false,
+          message: err.message || "Profile image upload failed",
+        });
+      }
+      next();
+    });
+  },
   (req, res, next) => {
     req.params.step = "1";
     next();
@@ -74,18 +107,15 @@ router.post(
     uploadMarksheet.any()(req, res, (err) => {
       if (err) {
         console.error("STEP 3 MULTER/CLOUDINARY ERROR:", err);
-
         return res.status(400).json({
           success: false,
           message: err.message || "File upload failed",
           error: err,
         });
       }
-
       next();
     });
   },
-  
   (req, res, next) => {
     req.params.step = "3";
     req.body.studentId = req.params.studentId;
@@ -104,6 +134,7 @@ router.post(
   saveStudentStep
 );
 
+
 router.post("/set-credentials", StudentCredentials);
 
 router.post("/login", studentLogin);
@@ -112,4 +143,5 @@ router.get("/me", protect, studentProfile);
 
 router.get("/", getAllStudents);
 router.get("/:id", protect, getStudent);
+
 export default router;
