@@ -1,6 +1,6 @@
 import Faculty from "../../Models/TeacherModel.js";
 import Class from "../../Models/CreateClass.js";
-import User from "../../Models/userModel.js";
+import User from "../../Models/UserModel.js";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import { sendFacultyEmail } from "../../utils/FREmail.js";

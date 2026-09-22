@@ -1,20 +1,53 @@
-import express from 'express';
+import express from "express";
 import {
   getMarkingList,
   gradeSubmission,
   bulkGradeSubmissions,
   autoGradeQuiz,
-  exportGrades
-} from '../../Controllers/Teacher/gradingController.js';
-import { protectFaculty } from '../../Middleware/facultyAuth.js';
+  exportGrades,
+} from "../../Controllers/Teacher/gradingController.js";
+import { authMiddleware } from "../../Middleware/authMiddleware.js";
+import { checkPermission } from "../../Middleware/checkPermission.js";
 
 const router = express.Router();
+// GET marking list for an activity
+router.get(
+  "/activity/:activityId",
+  authMiddleware,
+  checkPermission("marks:view"),
+  getMarkingList
+);
 
-// All routes require faculty authentication
-router.use(protectFaculty);
-router.get('/activity/:activityId', getMarkingList);
-router.put('/activity/:activityId/submission/:submissionId', gradeSubmission);
-router.put('/activity/:activityId/bulk-grade', bulkGradeSubmissions);
-router.post('/activity/:activityId/auto-grade', autoGradeQuiz);
-router.get('/activity/:activityId/export', exportGrades);
+// Grade a single submission
+router.put(
+  "/activity/:activityId/submission/:submissionId",
+  authMiddleware,
+  checkPermission("marks:update"),
+  gradeSubmission
+);
+
+// Bulk grade submissions
+router.put(
+  "/activity/:activityId/bulk-grade",
+  authMiddleware,
+  checkPermission("marks:update"),
+  bulkGradeSubmissions
+);
+
+// Auto-grade quiz
+router.post(
+  "/activity/:activityId/auto-grade",
+  authMiddleware,
+  checkPermission("marks:update"),
+  autoGradeQuiz
+);
+
+// Export grades
+router.get(
+  "/activity/:activityId/export",
+  authMiddleware,
+  checkPermission("marks:view"),
+  exportGrades
+);
+
 export default router;

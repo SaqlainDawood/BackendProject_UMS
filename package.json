@@ -5,6 +5,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
+     "seed:permissions": "node utils/seedPermissions.js",
+       "migrate:users": "node utils/migrateUsers.js",
     "start": "node server"
   },
   "keywords": [],

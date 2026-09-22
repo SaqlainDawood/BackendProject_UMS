@@ -1,4 +1,4 @@
-import User from "../../Models/userModel.js";
+import User from "../../Models/UserModel.js";
 import Faculty from "../../Models/TeacherModel.js";
 import Class from '../../Models/CreateClass.js';
 import mongoose from 'mongoose'

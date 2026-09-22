@@ -1,7 +1,7 @@
 import Student from "../../Models/StudentModel.js";
 import Faculty from "../../Models/TeacherModel.js";
 import { sendApprovalEmail } from "../../utils/emailService.js";
-import User from '../../Models/userModel.js'
+import User from '../../Models/UserModel.js';
 import Batch from "../../Models/Batch.js";
 import Enrollment from "../../Models/Enrollment.js";
 // in the dashboard total students check.

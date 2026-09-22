@@ -5,7 +5,7 @@ import ConnectDB from './Config/ConnectDB.js'
 import StudentRoutes from './Routes/StudentRoute.js'
 import FacultyRoutes from './Routes/TeacherRoutes.js'
 import FacultyPortal from './Routes/TPRoutes/TPSideRoutes.js'
-import AdminRoutes from './Routes/AdminRoutes.js'
+import AuthRoutes from './Routes/Auth/authRoutes.js'
 import AdminStatistics from './Routes/AdminStats/AdminStats.js'
 import AdminStudentVUD from './Routes/AdminStats/StudentVUD.js'
 import AdminCoordinator from './Routes/AdminCoordinator/RegisterCoordinator.js'
@@ -21,6 +21,8 @@ import EnrollmentRoutes from './Routes/students_Enrollments/routes.js';
 import academicsRoutes from './Routes/Admin/Academics/routes.js';
 import subjectRoutes from './Routes/subject/routes.js';
 import studentPortalRoutes from "./Routes/StudentPortal/StudentPortal.routes.js";
+import cmsRoutes from "./Routes/CMS/index.js";
+import staffRoutes from "./Routes/Staff/index.routes.js";
 
 
 dotenv.config();
@@ -51,10 +53,14 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/' , (req , res)=>{
     res.send("Welcome to the express")
 })
+
+// auth routes
+app.use('/api/auth' , AuthRoutes);
 // Admin
 app.use('/api/admin/student',AdminStudentVUD);
-app.use('/api/admin' , AdminRoutes)
-// Admin Statistics
+// Staff Routes
+app.use('/api/staff', staffRoutes);
+
 app.use('/api/admin/stats' , AdminStatistics);
 // Admin Register Coordinator
 app.use('/api/admin/coordinator' , AdminCoordinator)
@@ -81,6 +87,9 @@ app.use( "/api/student-portal", studentPortalRoutes);
 app.use('/api', EnrollmentRoutes);
 // app.use('/api', academicsRoutes);
 app.use('/api', subjectRoutes); 
+// CMS Routes
+app.use("/api/cms", cmsRoutes);
+
 
 app.use((err, req, res, next) => {
   console.error("UNHANDLED ERROR:", err);

@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import Student from "../../Models/StudentModel.js";
-import User from "../../Models/userModel.js";
+import User from "../../Models/UserModel.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import cloudinary from "../../Cloudinary/CloudConnect.js";

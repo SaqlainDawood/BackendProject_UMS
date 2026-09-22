@@ -1,5 +1,5 @@
 import Coordinator from "../../Models/CoordinatorModel.js";
-import User from "../../Models/userModel.js";
+import User from "../../Models/UserModel.js";
 import cloudinary from "../../Cloudinary/CloudConnect.js";
 import { sendCoordEmail } from "../../utils/CoorRegisterEmail.js";
 import bcrypt from "bcrypt";

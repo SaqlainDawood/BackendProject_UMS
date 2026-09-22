@@ -1,6 +1,6 @@
 import Student from "../../Models/StudentModel.js";
 import mongoose from "mongoose";
-import User from '../../Models/userModel.js'
+import User from '../../Models/UserModel.js'
 export const StudentView = async (req, res) => {
   try {
     const { id } = req.params;

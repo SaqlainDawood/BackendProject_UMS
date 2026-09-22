@@ -12,7 +12,7 @@ const facultySchema = new mongoose.Schema(
     lastName: { type: String, required: true },
    
     phone: { type: String, required: true },
-    cnic: {
+    cnic: {  
       type: String,
       required: true,
       unique: true,
@@ -27,7 +27,7 @@ const facultySchema = new mongoose.Schema(
     dateOfBirth: { type: Date, required: true },
     gender: { type: String, required: true, enum: ["Male", "Female", "othe"] },
     city: { type: String, required: true },
-    address: { type: String, required: true },
+      address: { type: String, required: true },
     department: { type: String, required: true },
     // Optional real ref to Department (in ADDITION to the existing `department`
     // string above, which stays untouched to avoid breaking existing

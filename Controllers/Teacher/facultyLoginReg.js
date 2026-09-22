@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import Faculty from '../../Models/TeacherModel.js';
-import User from '../../Models/userModel.js';
+import User from '../../Models/UserModel.js';
 import generatToken from '../../utils/token.js';
 
 export const FacultyLogin = async (req, res) => {

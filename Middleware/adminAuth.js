@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
-import Admin from "../Models/AdminModel.js";
-import User from "../Models/userModel.js";
+import User from "../Models/UserModel.js";
+
 export const protectAdmin = async (req, res, next) => {
   let token;
 
@@ -13,33 +13,49 @@ export const protectAdmin = async (req, res, next) => {
       if (!token) {
         return res.status(401).json({
           success: false,
-          message: "Not token Provided. Authorization Denied.",
+          message: "No token provided. Authorization denied.",
         });
       }
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      const user = await User.findById(decoded.id).select("-password");
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const user = await User.findById(decoded.id)
+        .select("-password");
+
       if (!user) {
         return res.status(401).json({
-          succes: false,
+          success: false,
           message: "User not found",
         });
       }
-      if (user.role !== "admin") {
+
+      if (user.isDeleted) {
+        return res.status(401).json({
+          success: false,
+          message: "Account deleted",
+        });
+      }
+
+      if (!user.isActive) {
         return res.status(403).json({
           success: false,
-          message: "Access denied. Amdin only!!!",
+          message: "Account inactive",
         });
       }
-      const admin = await Admin.findOne({ user: user._id });
-      if (!admin) {
-        return res.status(404).json({
+
+      // ✅ roleSlug check (not hardcoded "admin")
+      const allowedSlugs = ["admin", "super-admin"];
+      if (!allowedSlugs.includes(user.roleSlug)) {
+        return res.status(403).json({
           success: false,
-          message: "Admin Profile not found",
+          message: "Access denied. Admin only.",
         });
       }
+
+      // ❌ Admin profile lookup hata dein — ab User hi kaafi hai
+      // const admin = await Admin.findOne({ user: user._id });
+      // if (!admin) { ... }  ← ye khatam
+
       req.user = user;
-      req.admin = admin;
       next();
     } catch (error) {
       console.log("JWT Verification Error!!", error.message);
