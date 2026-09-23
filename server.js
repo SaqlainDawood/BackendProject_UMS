@@ -31,7 +31,6 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-
 app.use(cors({
     origin:[
          "https://studentteacherportal-j7yl2fvuj-saqlain-dawoods-projects.vercel.app",
@@ -50,56 +49,10 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-
 app.get('/' , (req , res)=>{
     res.send("Welcome to the express")
 })
 
-// auth routes
-app.use('/api/auth' , AuthRoutes);
-// Admin
-app.use('/api/admin/student',AdminStudentVUD);
-//student routes
-app.use("/api/students", studentRoutes);
-// Staff Routes
-app.use('/api/staff', staffRoutes);
-
-app.use('/api/admin/stats' , AdminStatistics);
-// Admin Register Coordinator
-app.use('/api/admin/coordinator' , AdminCoordinator)
-// Admin Side Faculty.
-app.use('/api/admin/faculty' , FacultyRoutes);
-// Faculty Portal Side Routes
-app.use('/api/faculty/portal' , FacultyPortal);
-app.use('/api/faculty/activities', activityRoutes);
-app.use('/api/faculty/grading', gradingRoutes);
-// Student
-
-app.use('/api/student', studentActivityRoutes);
-app.use('/api/students/attendance', StudentAttendance); 
-// Classes Assign for admin side
-app.use('/api/admin/classes', classRoute);
-app.use('/api/admin/classes',studentEnrollmentRoutes);
-// Attendance System admin side view
-app.use('/api/admin/attendance' , adminAttendance);
-// Facutly Portal Attendance
-app.use('/api/faculty/portal' , FacultyPortalAttendance)
-//student portal routes
-app.use( "/api/student-portal", studentPortalRoutes);
-
-app.use('/api', EnrollmentRoutes);
-// app.use('/api', academicsRoutes);
-app.use('/api', subjectRoutes); 
-// CMS Routes
-app.use("/api/cms", cmsRoutes);
-
-app.use((err, req, res, next) => {
-  console.error("UNHANDLED ERROR:", err);
-  res.status(500).json({
-    success: false,
-    message: err.message || "Internal server error",
-  });
-});
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "ok",
@@ -108,10 +61,48 @@ app.get("/health", (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-    console.log(`Server is Started at http://localhost:${PORT}`);
+// auth routes
+app.use('/api/auth' , AuthRoutes);
+app.use('/api/admin/student',AdminStudentVUD);
+app.use("/api/students", studentRoutes);
+app.use('/api/staff', staffRoutes);
+app.use('/api/admin/stats' , AdminStatistics);
+app.use('/api/admin/coordinator' , AdminCoordinator)
+app.use('/api/admin/faculty' , FacultyRoutes);
+app.use('/api/faculty/portal' , FacultyPortal);
+app.use('/api/faculty/activities', activityRoutes);
+app.use('/api/faculty/grading', gradingRoutes);
+app.use('/api/student', studentActivityRoutes);
+app.use('/api/students/attendance', StudentAttendance);
+app.use('/api/admin/classes', classRoute);
+app.use('/api/admin/classes',studentEnrollmentRoutes);
+app.use('/api/admin/attendance' , adminAttendance);
+app.use('/api/faculty/portal' , FacultyPortalAttendance)
+app.use( "/api/student-portal", studentPortalRoutes);
+app.use('/api', EnrollmentRoutes);
+// app.use('/api', academicsRoutes);
+app.use('/api', subjectRoutes);
+app.use("/api/cms", cmsRoutes);
+
+// error handler must be LAST, after all routes
+app.use((err, req, res, next) => {
+  console.error("UNHANDLED ERROR:", err);
+  res.status(500).json({
+    success: false,
+    message: err.message || "Internal server error",
+  });
 });
 
-ConnectDB().catch((err) => {
-    console.error('Failed to connect to DB:', err?.message || err);
-});
+const startServer = async () => {
+  try {
+    await ConnectDB();
+    app.listen(PORT, () => {
+      console.log(`Server is Started at http://localhost:${PORT}`);
+    });
+  } catch (err) {
+    console.error("Failed to connect to DB:", err?.message || err);
+    process.exit(1);
+  }
+};
+
+startServer();
