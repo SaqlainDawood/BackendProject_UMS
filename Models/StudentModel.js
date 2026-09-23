@@ -31,10 +31,6 @@ const FamilySchema = new mongoose.Schema(
 const EnrollmentSchema = new mongoose.Schema(
   {
     program: { type: String, required: true },
-    // semester and session are NOT known at Step 4 anymore — a Batch (and
-    // its startSessionId/currentSemester) is only assigned later, at
-    // admin/coordinator approval time. So these stay optional here and
-    // get filled in by approveStudents once a batch is matched.
     semester: { type: String, default: "" },
     session: { type: String, default: "" },
     department: { type: String, required: true },
@@ -45,134 +41,170 @@ const EnrollmentSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const StudentSchema = new mongoose.Schema({
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-  },
-  // Step 1: Personal Info
-  firstName: { type: String, required: true },
-  lastName: { type: String, required: true },
-  cnic: {
-    type: String,
-    required: true,
-    unique: true,
-    minlength: [13, "cnic must exactly 13 digits"],
-    maxlength: [13, "cnic must exactly 13 digits"],
-    match: [/^\d{13}$/, "CNIC must contain only digits"],
-  },
-  DOB: { type: Date },
-  province: { type: String },
-  domicile: { type: String },
-  phoneNo: { type: String, required: true },
-  presentAddress: { type: String, required: true },
-  permanentAddress: { type: String, required: true },
-  religion: { type: String, required: true },
-  gender: { type: String, required: true },
-  bloodGroup: { type: String, required: true },
-  maritalStatus: { type: String, required: true },
-  nationality: { type: String, required: true },
-  status: {
-    type: String,
-    enum: ["draft", "pending", "approved", "unassigned", "assign", "rejected", "active", "suspend"],
-    default: "draft", // Changed from "pending" to "draft"
-  },
-  rejectionReason: { type: String, default: null },
-  rollNo: { type: String, default: null },
-  section: { type: String, default: "" },
-  registrationNo: { type: String, default: null },
-  
-  // profile image
-  profileImage: {
-    url: { type: String },
-    public_id: { type: String },
-  },
+/* ============================================================
+   MAIN STUDENT SCHEMA
+   ============================================================ */
 
-  // Step 2: Family
-  family: FamilySchema,
+const StudentSchema = new mongoose.Schema(
+  {
+    // ========== LINK TO USER ==========
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
 
-  // Step 3: Academic (educationList = array of objects)
-  academic: {
-    educationList: [EducationSchema],
-  },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerificationToken: {
+      type: String,
+      default: null,
+    },
+    emailVerificationExpire: {
+      type: Date,
+      default: null,
+    },
 
-  // Step 4: Enrollment
-  enrollment: EnrollmentSchema,
-  // Real link to the Batch the student selected in Step 4 (source of truth).
-  // The `enrollment` object above stays as a denormalized snapshot for quick display.
-  batchId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Batch",
-    default: null,
-  },
-  // Individual selection chain the student picked in Step 4 (Campus -> Department -> Class -> Shift),
-  // kept as real refs (in addition to batchId) so admins can filter/query students by any level.
-  campusId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Campus",
-    default: null,
-  },
-  departmentId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Department",
-    default: null,
-  },
-  degreeClassId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "DegreeClass",
-    default: null,
-  },
-  shiftId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Shift",
-    default: null,
-  },
-  
-  gpa: {
-    type: [
+    resetPasswordToken: {
+      type: String,
+      default: null,
+    },
+    resetPasswordExpire: {
+      type: Date,
+      default: null,
+    },
+
+    firstName: { type: String }, // (required hataya — draft mein khaali ho sakta hai)
+    lastName: { type: String },
+    cnic: {
+      type: String,
+      unique: true,
+      sparse: true, // ✅ sparse — draft mein null ho sakta hai
+      minlength: [13, "cnic must exactly 13 digits"],
+      maxlength: [13, "cnic must exactly 13 digits"],
+      match: [/^\d{13}$/, "CNIC must contain only digits"],
+    },
+    DOB: { type: Date },
+    province: { type: String },
+    domicile: { type: String },
+    phoneNo: { type: String },
+    presentAddress: { type: String },
+    permanentAddress: { type: String },
+    religion: { type: String },
+    gender: { type: String },
+    bloodGroup: { type: String },
+    maritalStatus: { type: String },
+    nationality: { type: String },
+
+    profileImage: {
+      url: { type: String },
+      public_id: { type: String },
+    },
+
+    family: FamilySchema,
+
+    academic: {
+      educationList: [EducationSchema],
+    },    enrollment: EnrollmentSchema,
+    batchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Batch",
+      default: null,
+    },
+    campusId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Campus",
+      default: null,
+    },
+    departmentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Department",
+      default: null,
+    },
+    degreeClassId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "DegreeClass",
+      default: null,
+    },
+    shiftId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Shift",
+      default: null,
+    },
+    status: {
+      type: String,
+      enum: [
+        "draft",
+        "pending",
+        "approved",
+        "unassigned",
+        "assign",
+        "rejected",
+        "active",
+        "suspend",
+      ],
+      default: "draft",
+    },
+    rejectionReason: { type: String, default: null },
+    rollNo: { type: String, default: null },
+    section: { type: String, default: "" },
+    registrationNo: { type: String, default: null },
+
+    gpa: {
+      type: [
+        {
+          semester: { type: String },
+          value: { type: Number },
+        },
+      ],
+      default: [],
+    },
+    cgpa: {
+      type: Number,
+      default: null,
+    },
+    documents: {
+      cnic: { type: Boolean, default: true },
+      marksheet: { type: Boolean, default: false },
+      photo: { type: Boolean, default: true },
+      domicile: { type: Boolean, default: true },
+    },
+    isComplete: {
+      type: Boolean,
+      default: false,
+    },
+    lastStepCompleted: {
+      type: Number,
+      default: 0,
+    },
+    draftExpiresAt: {
+      type: Date,
+      default: () => new Date(+new Date() + 7 * 24 * 60 * 60 * 1000), // 7 days
+    },
+    temporaryFiles: [
       {
-        semester: { type: String },
-        value: { type: Number },
+        url: { type: String },
+        public_id: { type: String },
+        type: { type: String }, // 'profile' or 'marksheet'
       },
     ],
-    default: [],
-  },
-  cgpa: {
-    type: Number,
-    default: null,
-  },
 
-  documents: {
-    cnic: { type: Boolean, default: true },
-    marksheet: { type: Boolean, default: false },
-    photo: { type: Boolean, default: true },
-    domicile: { type: Boolean, default: true },
+    createdAt: { type: Date, default: Date.now },
   },
-  
-  // Draft management fields
-  isComplete: {
-    type: Boolean,
-    default: false,
-  },
-  lastStepCompleted: {
-    type: Number,
-    default: 0,
-  },
-  draftExpiresAt: {
-    type: Date,
-    default: () => new Date(+new Date() + 7 * 24 * 60 * 60 * 1000), // 7 days
-  },
-  temporaryFiles: [{
-    url: { type: String },
-    public_id: { type: String },
-    type: { type: String }, // 'profile' or 'marksheet'
-  }],
-  
-  createdAt: { type: Date, default: Date.now },
-});
+  { timestamps: true }
+);
 
-// Add TTL index for auto-deleting old drafts
+
+// TTL index for auto-deleting old drafts
 StudentSchema.index({ draftExpiresAt: 1 }, { expireAfterSeconds: 0 });
 
-export default mongoose.model("Student", StudentSchema);
+// For faster lookups
+StudentSchema.index({ user: 1 });
+StudentSchema.index({ status: 1 });
+
+const Student =
+  mongoose.models.Student || mongoose.model("Student", StudentSchema);
+
+export default Student;

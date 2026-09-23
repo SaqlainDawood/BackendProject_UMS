@@ -2,7 +2,6 @@ import express from 'express'
 import dotenv from 'dotenv'
 import cors from 'cors'
 import ConnectDB from './Config/ConnectDB.js'
-import StudentRoutes from './Routes/StudentRoute.js'
 import FacultyRoutes from './Routes/TeacherRoutes.js'
 import FacultyPortal from './Routes/TPRoutes/TPSideRoutes.js'
 import AuthRoutes from './Routes/Auth/authRoutes.js'
@@ -23,7 +22,7 @@ import subjectRoutes from './Routes/subject/routes.js';
 import studentPortalRoutes from "./Routes/StudentPortal/StudentPortal.routes.js";
 import cmsRoutes from "./Routes/CMS/index.js";
 import staffRoutes from "./Routes/Staff/index.routes.js";
-
+import studentRoutes from "./Routes/Student/index.js";
 
 dotenv.config();
 
@@ -58,6 +57,9 @@ app.get('/' , (req , res)=>{
 app.use('/api/auth' , AuthRoutes);
 // Admin
 app.use('/api/admin/student',AdminStudentVUD);
+//student routes
+app.use('/api/student', studentRoutes);
+
 // Staff Routes
 app.use('/api/staff', staffRoutes);
 
@@ -71,7 +73,7 @@ app.use('/api/faculty/portal' , FacultyPortal);
 app.use('/api/faculty/activities', activityRoutes);
 app.use('/api/faculty/grading', gradingRoutes);
 // Student
-app.use('/api/students' , StudentRoutes);
+
 app.use('/api/student', studentActivityRoutes);
 app.use('/api/students/attendance', StudentAttendance); 
 // Classes Assign for admin side
@@ -89,7 +91,6 @@ app.use('/api', EnrollmentRoutes);
 app.use('/api', subjectRoutes); 
 // CMS Routes
 app.use("/api/cms", cmsRoutes);
-
 
 app.use((err, req, res, next) => {
   console.error("UNHANDLED ERROR:", err);
