@@ -7,8 +7,8 @@ import studentApplicationAdminRoutes from "./StudentApplicationAdminRoutes.js";
 
 const router = express.Router();
 
-router.use("/auth/students", studentAuthRoutes);
-router.use("/students", studentStepRoutes);
-router.use("/admin/applications", studentApplicationAdminRoutes);
+router.use("/auth/", studentAuthRoutes);
+router.use("/steps/", studentStepRoutes);
+router.use("/admin/applications/", studentApplicationAdminRoutes);
 
 export default router;
