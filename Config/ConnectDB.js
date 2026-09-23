@@ -1,23 +1,33 @@
 import mongoose from 'mongoose';
 
+let cached = global._mongooseConn;
+if (!cached) cached = global._mongooseConn = { conn: null, promise: null };
+
 const ConnectDB = async () => {
+  if (cached.conn) return cached.conn;
+
+  if (!cached.promise) {
+    cached.promise = mongoose
+      .connect(process.env.MONGODB_URI, {
+        serverSelectionTimeoutMS: 30000,
+        connectTimeoutMS: 30000,
+        bufferCommands: true,
+      })
+      .then((mongooseInstance) => {
+        console.log(`MongoDB Connected: ${mongooseInstance.connection.host}`);
+        return mongooseInstance;
+      });
+  }
+
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI, {
-      // allow longer time for server selection in slow networks
-      serverSelectionTimeoutMS: 30000,
-      connectTimeoutMS: 30000,
-      // other options are now defaults in newer mongoose versions
-    });
-    console.log(` MongoDB Connected: ${conn.connection.host}`);
+    cached.conn = await cached.promise;
   } catch (error) {
-    console.error(" MongoDB Connection Failed:", error?.message || error);
-    console.error(error);
-    // Do not exit immediately in development — keep process alive for debugging
-    // but preserve previous behaviour for production by exiting when NODE_ENV=production
-    if (process.env.NODE_ENV === 'production') process.exit(1);
-    // Re-throw so callers can decide how to handle connection failures
+    cached.promise = null; // agli request pe retry ho sake
+    console.error("MongoDB Connection Failed:", error?.message || error);
     throw error;
   }
+
+  return cached.conn;
 };
 
 export default ConnectDB;
