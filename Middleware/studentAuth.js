@@ -1,6 +1,5 @@
-// Middleware/studentAuth.js
+
 import jwt from "jsonwebtoken";
-import User from "../Models/UserModel.js";
 import Student from "../Models/StudentModel.js";
 
 export const protectStudent = async (req, res, next) => {
@@ -14,6 +13,7 @@ export const protectStudent = async (req, res, next) => {
       token = req.headers.authorization.split(" ")[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+      // Check student token
       if (decoded.type !== "student") {
         return res.status(403).json({
           success: false,
@@ -21,19 +21,13 @@ export const protectStudent = async (req, res, next) => {
         });
       }
 
-      const user = await User.findById(decoded.id).select("-password");
-      if (!user || user.isDeleted) {
+      // ✅ StudentModel se dhoond
+      const student = await Student.findById(decoded.id).select("-password");
+
+      if (!student) {
         return res.status(401).json({
           success: false,
-          message: "User not found or deleted",
-        });
-      }
-
-      const student = await Student.findOne({ user: user._id });
-      if (!student) {
-        return res.status(404).json({
-          success: false,
-          message: "Student profile not found",
+          message: "Student not found",
         });
       }
 
@@ -44,8 +38,7 @@ export const protectStudent = async (req, res, next) => {
         });
       }
 
-      req.user = { id: user._id, email: user.email, roleSlug: user.roleSlug };
-      req.student = { id: student._id };
+      req.student = { id: student._id, email: student.email };
       req.studentDoc = student;
 
       next();

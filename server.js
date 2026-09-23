@@ -58,8 +58,7 @@ app.use('/api/auth' , AuthRoutes);
 // Admin
 app.use('/api/admin/student',AdminStudentVUD);
 //student routes
-app.use('/api/student', studentRoutes);
-
+app.use("/api/students", studentRoutes);
 // Staff Routes
 app.use('/api/staff', staffRoutes);
 

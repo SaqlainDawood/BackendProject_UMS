@@ -1,14 +1,20 @@
+// Routes/Student/StudentStepRoutes.js
 import express from "express";
 import { upload, uploadMarksheet } from "../../Middleware/Multer.js";
 import {
   saveStudentStep,
-  getStudentApplication,
   getStudentStep,
-  submitStudentApplication,
+  getStudentProfile,
+  getMyApplications,
+  getSingleApplication,
 } from "../../Controllers/Student/StudentStepController.js";
 import { protectStudent } from "../../Middleware/studentAuth.js";
+
 const router = express.Router();
+
 router.use(protectStudent);
+
+/* STEP 1 — Personal Info (with profile image) */
 router.post(
   "/step/1",
   upload.single("profileImage"),
@@ -19,6 +25,7 @@ router.post(
   saveStudentStep
 );
 
+/* STEP 2 — Family Info */
 router.post(
   "/step/2",
   (req, res, next) => {
@@ -27,6 +34,8 @@ router.post(
   },
   saveStudentStep
 );
+
+/* STEP 3 — Education (with marksheets) */
 router.post(
   "/step/3",
   uploadMarksheet.any(),
@@ -37,6 +46,7 @@ router.post(
   saveStudentStep
 );
 
+/* STEP 4 — Apply Here */
 router.post(
   "/step/4",
   (req, res, next) => {
@@ -45,8 +55,11 @@ router.post(
   },
   saveStudentStep
 );
-router.get("/application", getStudentApplication);
+
+/* GET routes */
+router.get("/profile", getStudentProfile);
+router.get("/my-applications", getMyApplications);
+router.get("/application/:appId", getSingleApplication);
 router.get("/step/:step", getStudentStep);
-router.post("/submit", submitStudentApplication);
 
 export default router;

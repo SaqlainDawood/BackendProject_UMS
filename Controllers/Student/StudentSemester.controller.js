@@ -8,18 +8,9 @@ import Subject from "../../Models/Subject.js";
 import TeacherSubject from "../../Models/TeacherSubject.js";
 import Teacher from "../../Models/TeacherModel.js";
 
-// =====================================================
-// Helper
-// =====================================================
-
 const isValidObjectId = (id) => {
   return mongoose.Types.ObjectId.isValid(id);
 };
-
-// =====================================================
-// CREATE STUDENT SEMESTER
-// Automatically adds ALL subjects of batch + semester
-// =====================================================
 
 export const createStudentSemester = async (req, res) => {
   try {
@@ -29,10 +20,6 @@ export const createStudentSemester = async (req, res) => {
       semester,
       session,
     } = req.body;
-
-    // -------------------------
-    // Validation
-    // -------------------------
 
     if (!studentId || !batchId || !semester) {
       return res.status(400).json({

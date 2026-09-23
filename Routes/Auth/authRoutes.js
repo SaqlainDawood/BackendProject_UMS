@@ -7,7 +7,7 @@ import {
   changePassword,
   forgotPassword,
   resetPassword,
-} from "../../Controllers/Auth/authController.js";
+} from "../../Controllers/auth/authController.js";
 import { authMiddleware } from "../../Middleware/authMiddleware.js";
 import { checkPermission } from "../../Middleware/checkPermission.js";
 

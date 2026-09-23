@@ -111,6 +111,11 @@ const PERMISSIONS = [
 { module: "staff", action: "view",    label: "View Staff Applications",   category: "recruitment" },
 { module: "staff", action: "approve", label: "Approve/Reject Staff",      category: "recruitment" },
 { module: "staff", action: "delete",  label: "Delete Staff Application",  category: "recruitment" },
+
+// ---------- STUDENT APPLICATION ----------
+{ module: "studentapplication", action: "view",    label: "View Student Applications",   category: "academics" },
+{ module: "studentapplication", action: "approve", label: "Approve Student Applications", category: "academics" },
+{ module: "studentapplication", action: "reject",  label: "Reject Student Applications",  category: "academics" },
 ];
 
 /* ============================================================
