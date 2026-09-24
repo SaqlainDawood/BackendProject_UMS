@@ -79,8 +79,7 @@ export const studentSignup = async (req, res) => {
 
     // IMPORTANT: this must point at the FRONTEND route (VerifyEmail.jsx),
     // which then calls the API — not directly at the backend API route.
-    const verifyUrl = buildFrontendUrl(`/student/verify-email/${verifyToken}`);
-
+  const verifyUrl = buildFrontendUrl(`/student/apply/verify-email/${verifyToken}`);
     // Await it so we actually know whether it worked, and log clearly either way.
     const emailResult = await sendStudentVerificationEmail({
       to: student.email,
@@ -284,7 +283,7 @@ export const studentResendVerification = async (req, res) => {
     student.emailVerificationExpire = Date.now() + 24 * 60 * 60 * 1000;
     await student.save();
 
-    const verifyUrl = buildFrontendUrl(`/student/verify-email/${verifyToken}`);
+    const verifyUrl = buildFrontendUrl(`/student/apply/verify-email/${verifyToken}`);
 
     const emailResult = await sendStudentVerificationEmail({
       to: student.email,
@@ -338,7 +337,7 @@ export const studentForgotPassword = async (req, res) => {
     student.resetPasswordExpire = Date.now() + 15 * 60 * 1000;
     await student.save();
 
-    const resetUrl = buildFrontendUrl(`/student/reset-password/${resetToken}`);
+    const resetUrl = buildFrontendUrl(`/student/apply/reset-password/${resetToken}`);
 
     const emailResult = await sendStudentPasswordResetEmail({
       to: student.email,
