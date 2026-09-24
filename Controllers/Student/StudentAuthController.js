@@ -19,9 +19,16 @@ const generateStudentToken = (student) => {
   );
 };
 
+/* HELPER: build the link the USER clicks (must go to the frontend page,
+   which then calls the API — not straight to the API route) */
+const buildFrontendUrl = (path) => {
+  const FRONT_END_URL = process.env.FRONT_END_URL || "http://localhost:5173";
+  return `${FRONT_END_URL}${path}`;
+};
+
 /* ============================================================
    1. SIGNUP
-   POST /api/students/signup
+   POST /api/students/auth/signup
    Body: { email, password }
    ============================================================ */
 export const studentSignup = async (req, res) => {
@@ -70,20 +77,33 @@ export const studentSignup = async (req, res) => {
     student.emailVerificationExpire = Date.now() + 24 * 60 * 60 * 1000;
     await student.save();
 
-    const BACKEND_URL =
-      process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 8000}`;
-    const verifyUrl = `${BACKEND_URL}/api/students/verify-email/${verifyToken}`;
+    // IMPORTANT: this must point at the FRONTEND route (VerifyEmail.jsx),
+    // which then calls the API — not directly at the backend API route.
+    const verifyUrl = buildFrontendUrl(`/student/verify-email/${verifyToken}`);
 
-    sendStudentVerificationEmail({
+    // Await it so we actually know whether it worked, and log clearly either way.
+    const emailResult = await sendStudentVerificationEmail({
       to: student.email,
       name: "Student",
       verifyUrl,
-    }).catch((err) => console.error("Verification email failed:", err.message));
+    });
+
+    if (!emailResult.success) {
+      console.error(
+        `⚠️ Signup succeeded for ${student.email} but verification email FAILED:`,
+        emailResult.error
+      );
+    } else {
+      console.log(`✅ Verification email sent to ${student.email}`);
+    }
 
     return res.status(201).json({
       success: true,
-      message: "Signup successful. Please check your email to verify.",
+      message: emailResult.success
+        ? "Signup successful. Please check your email to verify."
+        : "Signup successful, but the verification email couldn't be sent. Use 'resend verification' or contact support.",
       studentId: student._id,
+      emailSent: emailResult.success,
       ...(process.env.NODE_ENV !== "production" && { verifyToken, verifyUrl }),
     });
   } catch (err) {
@@ -94,7 +114,7 @@ export const studentSignup = async (req, res) => {
 
 /* ============================================================
    2. VERIFY EMAIL
-   POST /api/students/verify-email/:token
+   POST /api/students/auth/verify-email/:token
    ============================================================ */
 export const studentVerifyEmail = async (req, res) => {
   try {
@@ -128,7 +148,11 @@ export const studentVerifyEmail = async (req, res) => {
     sendStudentWelcomeEmail({
       to: student.email,
       name: student.personalInfo?.firstName || "Student",
-    }).catch((err) => console.error("Welcome email failed:", err.message));
+    })
+      .then((r) => {
+        if (!r.success) console.error("Welcome email failed:", r.error);
+      })
+      .catch((err) => console.error("Welcome email failed:", err.message));
 
     return res.json({
       success: true,
@@ -142,7 +166,7 @@ export const studentVerifyEmail = async (req, res) => {
 
 /* ============================================================
    3. LOGIN
-   POST /api/students/login
+   POST /api/students/auth/login
    Body: { email, password }
    ============================================================ */
 export const studentLogin = async (req, res) => {
@@ -209,7 +233,7 @@ export const studentLogin = async (req, res) => {
 
 /* ============================================================
    4. GET ME
-   GET /api/students/me
+   GET /api/students/auth/me
    ============================================================ */
 export const studentGetMe = async (req, res) => {
   try {
@@ -229,7 +253,7 @@ export const studentGetMe = async (req, res) => {
 
 /* ============================================================
    5. RESEND VERIFICATION
-   POST /api/students/resend-verification
+   POST /api/students/auth/resend-verification
    Body: { email }
    ============================================================ */
 export const studentResendVerification = async (req, res) => {
@@ -239,6 +263,7 @@ export const studentResendVerification = async (req, res) => {
 
     const student = await Student.findOne({ email: email.toLowerCase().trim() });
     if (!student) {
+      // Don't reveal whether the email exists
       return res.json({
         success: true,
         message: "If the email exists, a verification link has been sent.",
@@ -259,15 +284,21 @@ export const studentResendVerification = async (req, res) => {
     student.emailVerificationExpire = Date.now() + 24 * 60 * 60 * 1000;
     await student.save();
 
-    const BACKEND_URL =
-      process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 8000}`;
-    const verifyUrl = `${BACKEND_URL}/api/students/verify-email/${verifyToken}`;
+    const verifyUrl = buildFrontendUrl(`/student/verify-email/${verifyToken}`);
 
-    await sendStudentVerificationEmail({
+    const emailResult = await sendStudentVerificationEmail({
       to: student.email,
       name: "Student",
       verifyUrl,
     });
+
+    if (!emailResult.success) {
+      console.error(`⚠️ Resend verification failed for ${student.email}:`, emailResult.error);
+      return res.status(502).json({
+        success: false,
+        message: "Couldn't send the email right now. Please try again shortly.",
+      });
+    }
 
     return res.json({
       success: true,
@@ -281,7 +312,7 @@ export const studentResendVerification = async (req, res) => {
 
 /* ============================================================
    6. FORGOT PASSWORD
-   POST /api/students/forgot-password
+   POST /api/students/auth/forgot-password
    Body: { email }
    ============================================================ */
 export const studentForgotPassword = async (req, res) => {
@@ -307,15 +338,17 @@ export const studentForgotPassword = async (req, res) => {
     student.resetPasswordExpire = Date.now() + 15 * 60 * 1000;
     await student.save();
 
-    const BACKEND_URL =
-      process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 8000}`;
-    const resetUrl = `${BACKEND_URL}/api/students/reset-password/${resetToken}`;
+    const resetUrl = buildFrontendUrl(`/student/reset-password/${resetToken}`);
 
-    await sendStudentPasswordResetEmail({
+    const emailResult = await sendStudentPasswordResetEmail({
       to: student.email,
       name: "Student",
       resetUrl,
     });
+
+    if (!emailResult.success) {
+      console.error(`⚠️ Password reset email failed for ${student.email}:`, emailResult.error);
+    }
 
     return res.json({
       success: true,
@@ -329,7 +362,7 @@ export const studentForgotPassword = async (req, res) => {
 
 /* ============================================================
    7. RESET PASSWORD
-   POST /api/students/reset-password/:token
+   POST /api/students/auth/reset-password/:token
    Body: { password }
    ============================================================ */
 export const studentResetPassword = async (req, res) => {
@@ -370,7 +403,11 @@ export const studentResetPassword = async (req, res) => {
       to: student.email,
       name: "Student",
       time: new Date().toLocaleString(),
-    }).catch((err) => console.error("Email failed:", err.message));
+    })
+      .then((r) => {
+        if (!r.success) console.error("Password-changed email failed:", r.error);
+      })
+      .catch((err) => console.error("Password-changed email failed:", err.message));
 
     return res.json({
       success: true,
