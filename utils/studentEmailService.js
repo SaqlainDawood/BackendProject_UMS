@@ -1,51 +1,125 @@
+// utils/studentEmailService.js
 import axios from "axios";
+import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import dns from "dns";
 
 dotenv.config();
 
+// ✅ DNS fix for Vercel
 dns.setDefaultResultOrder("ipv4first");
 
+// ============================================================
+// BREVO CONFIG
+// ============================================================
 const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
 
-/* CORE SENDER */
-const sendEmail = async ({ to, subject, html }) => {
-  try {
-    if (!to || !subject || !html) throw new Error("Missing required fields");
+// ============================================================
+// GMAIL TRANSPORTER (Fallback)
+// ============================================================
+const gmailTransporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
 
-    const apiKey = process.env.BREVO_API_KEY;
-    if (!apiKey) throw new Error("BREVO_API_KEY missing");
+// ============================================================
+// BREVO SENDER
+// ============================================================
+const sendViaBrevo = async ({ to, subject, html }) => {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) throw new Error("BREVO_API_KEY missing");
 
-    const payload = {
-      sender: {
-        email: process.env.EMAIL_USER,
-        name: process.env.UNIVERSITY_NAME || "UMS Portal",
-      },
-      to: [{ email: to }],
-      subject,
-      htmlContent: html,
-    };
+  const payload = {
+    sender: {
+      email: process.env.BREVO_EMAIL_USER,
+      name: process.env.UNIVERSITY_NAME || "UMS Portal",
+    },
+    to: [{ email: to }],
+    subject,
+    htmlContent: html,
+  };
 
-    const res = await axios.post(BREVO_API_URL, payload, {
-      headers: {
-        accept: "application/json",
-        "api-key": apiKey,
-        "content-type": "application/json",
-      },
-      timeout: 20000,
-    });
+  const res = await axios.post(BREVO_API_URL, payload, {
+    headers: {
+      accept: "application/json",
+      "api-key": apiKey,
+      "content-type": "application/json",
+    },
+    timeout: 20000,
+  });
 
-    console.log(`✅ Student email sent to ${to}`);
-    return { success: true, messageId: res.data?.messageId };
-  } catch (err) {
-    const msg =
-      err.response?.data?.message || err.response?.data?.error || err.message;
-    console.error("❌ studentEmailService error:", msg);
-    return { success: false, error: msg };
-  }
+  return {
+    success: true,
+    provider: "brevo",
+    messageId: res.data?.messageId || null,
+  };
 };
 
-/* BASE TEMPLATE */
+// ============================================================
+// GMAIL SENDER (Fallback)
+// ============================================================
+const sendViaGmail = async ({ to, subject, html }) => {
+  const appName = process.env.UNIVERSITY_NAME || "UMS Portal";
+
+  const info = await gmailTransporter.sendMail({
+    from: `"${appName}" <${process.env.GMAIL_USER}>`,
+    to,
+    subject,
+    html,
+  });
+
+  return {
+    success: true,
+    provider: "gmail",
+    messageId: info.messageId || null,
+  };
+};
+
+// ============================================================
+// CORE SENDER — Brevo primary, Gmail fallback
+// ============================================================
+const sendEmail = async ({ to, subject, html }) => {
+  if (!to || !subject || !html) {
+    return { success: false, error: "Missing required fields" };
+  }
+
+  let brevoError = null;
+  let gmailError = null;
+
+  // ---------- Try Brevo First ----------
+  try {
+    const result = await sendViaBrevo({ to, subject, html });
+    console.log(`✅ Email sent via Brevo to ${to}`);
+    return result;
+  } catch (err) {
+    brevoError =
+      err.response?.data?.message || err.response?.data?.error || err.message;
+    console.warn(`⚠️ Brevo failed for ${to}: ${brevoError}`);
+  }
+
+  // ---------- Fallback to Gmail ----------
+  try {
+    const result = await sendViaGmail({ to, subject, html });
+    console.log(`✅ Email sent via Gmail (fallback) to ${to}`);
+    return result;
+  } catch (err) {
+    gmailError = err.message;
+    console.error(`❌ Gmail fallback failed for ${to}: ${gmailError}`);
+  }
+
+  // ---------- Both Failed ----------
+  return {
+    success: false,
+    error: `Brevo: ${brevoError} | Gmail: ${gmailError}`,
+  };
+};
+
+// ============================================================
+// BASE TEMPLATE (UNCHANGED)
+// ============================================================
 const baseTemplate = ({
   title,
   bodyHtml,
@@ -82,7 +156,9 @@ const baseTemplate = ({
 </body></html>`;
 };
 
-/* 1. VERIFY EMAIL */
+// ============================================================
+// 1. VERIFY EMAIL
+// ============================================================
 export const sendStudentVerificationEmail = async ({ to, name, verifyUrl }) => {
   const html = baseTemplate({
     title: "Verify Your Email Address",
@@ -97,7 +173,9 @@ export const sendStudentVerificationEmail = async ({ to, name, verifyUrl }) => {
   return sendEmail({ to, subject: "Verify Your Email — Student Registration", html });
 };
 
-/* 2. WELCOME */
+// ============================================================
+// 2. WELCOME
+// ============================================================
 export const sendStudentWelcomeEmail = async ({ to, name }) => {
   const html = baseTemplate({
     title: `Welcome, ${name || "Student"}! 🎓`,
@@ -112,7 +190,9 @@ export const sendStudentWelcomeEmail = async ({ to, name }) => {
   return sendEmail({ to, subject: "Email Verified — Continue Your Application", html });
 };
 
-/* 3. PASSWORD RESET */
+// ============================================================
+// 3. PASSWORD RESET
+// ============================================================
 export const sendStudentPasswordResetEmail = async ({ to, name, resetUrl }) => {
   const html = baseTemplate({
     title: "Reset Your Password",
@@ -128,7 +208,9 @@ export const sendStudentPasswordResetEmail = async ({ to, name, resetUrl }) => {
   return sendEmail({ to, subject: "Password Reset — Student Account", html });
 };
 
-/* 4. PASSWORD CHANGED */
+// ============================================================
+// 4. PASSWORD CHANGED
+// ============================================================
 export const sendStudentPasswordChangedEmail = async ({ to, name, time }) => {
   const html = baseTemplate({
     title: "Your Password Was Changed",
@@ -145,7 +227,9 @@ export const sendStudentPasswordChangedEmail = async ({ to, name, time }) => {
   return sendEmail({ to, subject: "Security Alert — Password Changed", html });
 };
 
-/* 5. APPLICATION APPROVED */
+// ============================================================
+// 5. APPLICATION APPROVED
+// ============================================================
 export const sendStudentApprovedEmail = async ({
   to,
   name,
@@ -211,7 +295,9 @@ export const sendStudentApprovedEmail = async ({
   return sendEmail({ to, subject: `🎉 Admission Approved — ${appName}`, html });
 };
 
-/* 6. APPLICATION REJECTED */
+// ============================================================
+// 6. APPLICATION REJECTED
+// ============================================================
 export const sendStudentRejectedEmail = async ({ to, name, reason }) => {
   const appName = process.env.UNIVERSITY_NAME || "UMS Portal";
   const contact = process.env.UNIVERSITY_CONTACT || "";
