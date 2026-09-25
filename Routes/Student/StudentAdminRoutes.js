@@ -4,7 +4,7 @@ import {
   getStudentUserById,
 } from "../../Controllers/Admin/StudentAdminController.js";
 import { protect } from "../../Middleware/authMiddleware.js"; 
-import { checkPermission } from "../../middlewares/permissionMiddleware.js"; 
+import { checkPermission } from "../../Middleware/checkPermission.js"; 
 const router = express.Router();
 
 router.use(protect);

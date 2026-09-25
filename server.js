@@ -21,7 +21,6 @@ import studentActivityRoutes from './Routes/StudentPortal/studentActivityRoutes.
 import EnrollmentRoutes from './Routes/students_Enrollments/routes.js';
 import academicsRoutes from './Routes/Admin/Academics/routes.js';
 import subjectRoutes from './Routes/subject/routes.js';
-import studentPortalRoutes from "./Routes/StudentPortal/StudentPortal.routes.js";
 import cmsRoutes from "./Routes/CMS/index.js";
 import staffRoutes from "./Routes/Staff/index.routes.js";
 import studentRoutes from "./Routes/Student/index.js";
@@ -78,7 +77,6 @@ app.use('/api/admin/classes', classRoute);
 app.use('/api/admin/classes',studentEnrollmentRoutes);
 app.use('/api/admin/attendance' , adminAttendance);
 app.use('/api/faculty/portal' , FacultyPortalAttendance)
-app.use( "/api/student-portal", studentPortalRoutes);
 app.use('/api', EnrollmentRoutes);
 // app.use('/api', academicsRoutes);
 app.use('/api', subjectRoutes);
