@@ -195,8 +195,6 @@ export const approveApplication = async (req, res) => {
     if (!student) {
       return res.status(404).json({ success: false, message: "Student not found" });
     }
-
-    // ✅ Role check
     const role = await Role.findOne({ slug: "student", isActive: true });
     if (!role) {
       return res.status(404).json({
@@ -205,22 +203,18 @@ export const approveApplication = async (req, res) => {
       });
     }
 
-    // ✅ UserModel create/update (same password as student)
     let user = await User.findOne({ email: student.email });
 
     if (user) {
-      // Update existing
       user.role = role._id;
       user.roleSlug = role.slug;
       user.isActive = true;
       user.isDeleted = false;
-      // ✅ Password same rahega
       if (!user.password && student.password) {
         user.password = student.password;
       }
       await user.save();
     } else {
-      // ✅ Create new user with same password
       user = await User.create({
         email: student.email,
         password: student.password, // ← Same password (already hashed)
@@ -231,28 +225,22 @@ export const approveApplication = async (req, res) => {
       });
     }
 
-    // ✅ Link student → user
     student.user = user._id;
     await student.save();
 
-    // ✅ Auto Batch assign (find matching batch)
-    const { rollNo, registrationNo, section } = req.body;
-
-    let assignedBatch = await Batch.findOne({
-      campusId: application.campusId,
+    const { rollNo, registrationNo, section } = req.body || {};
+     let assignedBatch = await Batch.findOne({
       departmentId: application.departmentId,
       degreeClassId: application.degreeClassId,
       shiftId: application.shiftId,
-      isActive: true,
+      status: "active",
     }).sort({ createdAt: -1 });
 
     if (!assignedBatch) {
-      // Fallback: match by campus + department + degreeClass
       assignedBatch = await Batch.findOne({
-        campusId: application.campusId,
         departmentId: application.departmentId,
         degreeClassId: application.degreeClassId,
-        isActive: true,
+        status: "active",
       }).sort({ createdAt: -1 });
     }
 
@@ -260,11 +248,9 @@ export const approveApplication = async (req, res) => {
       return res.status(400).json({
         success: false,
         message:
-          "No matching batch found. Please create a batch first for this campus/department/class/shift.",
+          "No matching batch found. Please create a batch first for this department/class/shift.",
       });
     }
-
-    // Auto-generate roll number if not provided
     let finalRollNo = rollNo;
     if (!finalRollNo) {
       const count = await Application.countDocuments({
@@ -274,7 +260,6 @@ export const approveApplication = async (req, res) => {
       finalRollNo = `${assignedBatch.name || "BATCH"}-${String(count + 1).padStart(3, "0")}`;
     }
 
-    // Update application
     application.status = "approved";
     application.batchId = assignedBatch._id;
     application.batchAssignedAt = new Date();
@@ -286,7 +271,6 @@ export const approveApplication = async (req, res) => {
     application.rejectionReason = null;
     await application.save();
 
-    // Increment batch counter
     await Batch.findByIdAndUpdate(assignedBatch._id, {
       $inc: { studentsCount: 1 },
     });
