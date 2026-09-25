@@ -1,21 +1,14 @@
-// Controllers/Admin/StudentApplicationAdminController.js
 import Application from "../../Models/ApplicationModel.js";
 import Student from "../../Models/StudentModel.js";
 import User from "../../Models/UserModel.js";
 import Role from "../../Models/RoleModel.js";
 import Batch from "../../Models/Batch.js";
 import bcrypt from "bcryptjs";
+import Enrollment from "../../Models/Enrollment.js";
 import {
   sendStudentApprovedEmail,
   sendStudentRejectedEmail,
 } from "../../utils/studentEmailService.js";
-
-/* ============================================================
-   1. LIST APPLICATIONS (with filters + pagination)
-   GET /api/admin/student-applications
-   Query: ?status=pending&degreeClassId=...&search=ali&page=1&limit=20
-   Permission: studentapplication:view
-   ============================================================ */
 export const getAllApplications = async (req, res) => {
   try {
     const {
@@ -169,6 +162,7 @@ export const getApplicationById = async (req, res) => {
 
 /* ============================================================
    4. APPROVE APPLICATION → UserModel Create + Role Assign + Batch
+      + Enrollment record create/update
    PATCH /api/admin/student-applications/:id/approve
    Body: { rollNo?, registrationNo?, section? }
    Permission: studentapplication:approve
@@ -229,7 +223,7 @@ export const approveApplication = async (req, res) => {
     await student.save();
 
     const { rollNo, registrationNo, section } = req.body || {};
-     let assignedBatch = await Batch.findOne({
+    let assignedBatch = await Batch.findOne({
       departmentId: application.departmentId,
       degreeClassId: application.degreeClassId,
       shiftId: application.shiftId,
@@ -274,6 +268,25 @@ export const approveApplication = async (req, res) => {
     await Batch.findByIdAndUpdate(assignedBatch._id, {
       $inc: { studentsCount: 1 },
     });
+
+    // Enrollment record create/update karo (student ↔ batch link)
+    try {
+      await Enrollment.findOneAndUpdate(
+        { studentId: student._id, batchId: assignedBatch._id },
+        {
+          $setOnInsert: {
+            studentId: student._id,
+            batchId: assignedBatch._id,
+            enrolledAt: new Date(),
+          },
+          $set: { status: "active" },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+    } catch (enrollErr) {
+      console.error("Enrollment creation failed:", enrollErr.message);
+      // Application already approved hai, isliye request fail nahi karni — sirf log karo
+    }
 
     // Send email
     sendStudentApprovedEmail({
