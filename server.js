@@ -41,7 +41,7 @@ app.use(cors({
             "http://localhost:5175",
             "http://localhost:5176",
     ],
-    methods:['GET', 'POST','PUT','DELETE','OPTIONS'],
+    methods:['GET', 'POST','PUT','DELETE','OPTIONS', 'PATCH' ,'PUT', 'HEAD', 'CONNECT', 'TRACE', 'COPY', 'LOCK', 'UNLOCK', 'SEARCH', 'MKCOL', 'MOVE', 'PROPFIND', 'PROPPATCH', 'REPORT', 'CHECKOUT', 'MERGE', 'M-SEARCH', 'NOTIFY', 'SUBSCRIBE', 'UNSUBSCRIBE',],
     allowedHeaders:['Content-Type','Authorization'],
     credentials:true,
 }));
