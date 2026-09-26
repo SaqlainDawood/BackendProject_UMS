@@ -4,23 +4,23 @@ import express from 'express'
 import dotenv from 'dotenv'
 import cors from 'cors'
 import ConnectDB from './Config/ConnectDB.js'
-import FacultyRoutes from './Routes/TeacherRoutes.js'
-import FacultyPortal from './Routes/TPRoutes/TPSideRoutes.js'
+// import FacultyRoutes from './Routes/TeacherRoutes.js'
+// import FacultyPortal from './Routes/TPRoutes/TPSideRoutes.js'
 import AuthRoutes from './Routes/Auth/authRoutes.js'
-import AdminStatistics from './Routes/AdminStats/AdminStats.js'
-import AdminStudentVUD from './Routes/AdminStats/StudentVUD.js'
-import AdminCoordinator from './Routes/AdminCoordinator/RegisterCoordinator.js'
-import classRoute from './Routes/AdminClassRoutes/AdminClassesCRUD.js'
-import adminAttendance from './Routes/AdminAttendance/Attendance.js'
-import FacultyPortalAttendance from './Routes/TPRoutes/facultyAttendanceRoutes.js'
-import StudentAttendance from './Routes/StudentPortal/studentRoutes.js'
-import studentEnrollmentRoutes from './Routes/AdminClassRoutes/studentEnrollmentRoutes.js'
-import activityRoutes from './Routes/TPRoutes/activityRoutes.js'
-import gradingRoutes from './Routes/TPRoutes/gradingRoutes.js'
-import studentActivityRoutes from './Routes/StudentPortal/studentActivityRoutes.js';
+// import AdminStatistics from './Routes/AdminStats/AdminStats.js'
+// import AdminStudentVUD from './Routes/AdminStats/StudentVUD.js
+// import AdminCoordinator from './Routes/AdminCoordinator/RegisterCoordinator.js'
+// import classRoute from './Routes/AdminClassRoutes/AdminClassesCRUD.js'
+// import adminAttendance from './Routes/AdminAttendance/Attendance.js'
+// import FacultyPortalAttendance from './Routes/TPRoutes/facultyAttendanceRoutes.js'
+// import StudentAttendance from './Routes/StudentPortal/studentRoutes.js'
+// import studentEnrollmentRoutes from './Routes/AdminClassRoutes/studentEnrollmentRoutes.js'
+// import activityRoutes from './Routes/TPRoutes/activityRoutes.js'
+// import gradingRoutes from './Routes/TPRoutes/gradingRoutes.js'
+// import studentActivityRoutes from './Routes/StudentPortal/studentActivityRoutes.js';
 import EnrollmentRoutes from './Routes/students_Enrollments/routes.js';
-import academicsRoutes from './Routes/Admin/Academics/routes.js';
-import subjectRoutes from './Routes/subject/routes.js';
+// import academicsRoutes from './Routes/Admin/Academics/routes.js';
+// import subjectRoutes from './Routes/subject/routes.js';
 import cmsRoutes from "./Routes/CMS/index.js";
 import staffRoutes from "./Routes/Staff/index.routes.js";
 import studentRoutes from "./Routes/Student/index.js";
@@ -62,24 +62,24 @@ app.get("/health", (req, res) => {
 
 // auth routes
 app.use('/api/auth' , AuthRoutes);
-app.use('/api/admin/student',AdminStudentVUD);
+// app.use('/api/admin/student',AdminStudentVUD);
 app.use("/api/students", studentRoutes);
 app.use('/api/staff', staffRoutes);
-app.use('/api/admin/stats' , AdminStatistics);
-app.use('/api/admin/coordinator' , AdminCoordinator)
-app.use('/api/admin/faculty' , FacultyRoutes);
-app.use('/api/faculty/portal' , FacultyPortal);
-app.use('/api/faculty/activities', activityRoutes);
-app.use('/api/faculty/grading', gradingRoutes);
-app.use('/api/student', studentActivityRoutes);
-app.use('/api/students/attendance', StudentAttendance);
-app.use('/api/admin/classes', classRoute);
-app.use('/api/admin/classes',studentEnrollmentRoutes);
-app.use('/api/admin/attendance' , adminAttendance);
-app.use('/api/faculty/portal' , FacultyPortalAttendance)
+// app.use('/api/admin/stats' , AdminStatistics);
+// app.use('/api/admin/coordinator' , AdminCoordinator)
+// app.use('/api/admin/faculty' , FacultyRoutes);
+// app.use('/api/faculty/portal' , FacultyPortal);
+// app.use('/api/faculty/activities', activityRoutes);
+// app.use('/api/faculty/grading', gradingRoutes);
+// app.use('/api/student', studentActivityRoutes);
+// app.use('/api/students/attendance', StudentAttendance);
+// app.use('/api/admin/classes', classRoute);
+// app.use('/api/admin/classes',studentEnrollmentRoutes);
+// app.use('/api/admin/attendance' , adminAttendance);
+// app.use('/api/faculty/portal' , FacultyPortalAttendance)
 app.use('/api', EnrollmentRoutes);
 // app.use('/api', academicsRoutes);
-app.use('/api', subjectRoutes);
+// app.use('/api', subjectRoutes);
 app.use("/api/cms", cmsRoutes);
 
 // error handler must be LAST, after all routes
