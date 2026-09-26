@@ -96,11 +96,13 @@ export const staffSignup = async (req, res) => {
 
 /* ============================================================
    2. VERIFY EMAIL
-   POST /api/staff/verify-email/:token
+   Supports both POST /api/staff/verify-email/:token (existing)
+   and GET/POST /api/staff/verify-email?token=... for frontend links
    ============================================================ */
 export const staffVerifyEmail = async (req, res) => {
   try {
-    const { token } = req.params;
+    // Accept token from params (existing) or query (frontend may call)
+    const token = req.params.token || req.query.token;
 
     if (!token) {
       return res.status(400).json({
