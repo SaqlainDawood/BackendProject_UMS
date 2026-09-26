@@ -73,7 +73,7 @@ export const staffSignup = async (req, res) => {
     });
 
     // Send verification email
-    const verifyUrl = `${process.env.FRONT_END_URL}/staff/verify-email/${verifyToken}`;
+    const verifyUrl = `${process.env.FRONT_END_URL}/staff/apply/varify-email/${verifyToken}`;
 
     sendStaffVerificationEmail({
       to: staff.email,
@@ -270,7 +270,7 @@ export const staffResendVerification = async (req, res) => {
     staff.emailVerificationExpire = Date.now() + 24 * 60 * 60 * 1000;
     await staff.save();
 
-    const verifyUrl = `${process.env.FRONT_END_URL}/staff/verify-email/${verifyToken}`;
+    const verifyUrl = `${process.env.FRONT_END_URL}/staff/apply/varify-email/${verifyToken}`;
 
     await sendStaffVerificationEmail({
       to: staff.email,
