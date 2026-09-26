@@ -153,11 +153,7 @@ export const staffVerifyEmail = async (req, res) => {
   }
 };
 
-/* ============================================================
-   3. LOGIN
-   POST /api/staff/login
-   Body: { email, password }
-   ============================================================ */
+//staff login
 export const staffLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -169,9 +165,14 @@ export const staffLogin = async (req, res) => {
       });
     }
 
-    const staff = await Staff.findOne({ email: email.toLowerCase().trim() });
+    const staff = await Staff.findOne({
+      email: email.toLowerCase().trim(),
+      isDeleted: false,
+    }).populate({
+      path: "step6_applyFor.jobPost",
+    });
 
-    if (!staff || staff.isDeleted) {
+    if (!staff) {
       return res.status(401).json({
         success: false,
         message: "Invalid email or password",
@@ -186,6 +187,7 @@ export const staffLogin = async (req, res) => {
     }
 
     const isMatch = await bcrypt.compare(password, staff.password);
+
     if (!isMatch) {
       return res.status(401).json({
         success: false,
@@ -193,7 +195,17 @@ export const staffLogin = async (req, res) => {
       });
     }
 
-    const token = generateStaffToken(staff);
+    const token = jwt.sign(
+      {
+        id: staff._id,
+        email: staff.email,
+        type: "staff",
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "5h",
+      }
+    );
 
     return res.status(200).json({
       success: true,
@@ -206,11 +218,24 @@ export const staffLogin = async (req, res) => {
         currentStep: staff.currentStep,
         completedSteps: staff.completedSteps,
         isSubmitted: staff.isSubmitted,
+        submittedAt: staff.submittedAt,
+        step1_personalInfo: staff.step1_personalInfo,
+        step2_familyInfo: staff.step2_familyInfo,
+        step3_education: staff.step3_education,
+        step4_experience: staff.step4_experience,
+        step5_expectations: staff.step5_expectations,
+        step6_applyFor: staff.step6_applyFor,
+        user: staff.user,
       },
     });
-  } catch (err) {
-    console.error("staffLogin error:", err);
-    return res.status(500).json({ success: false, message: err.message });
+  } catch (error) {
+    console.error("Staff Login Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error during login",
+      error: error.message,
+    });
   }
 };
 
