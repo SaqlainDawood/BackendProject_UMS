@@ -6,13 +6,16 @@ import {
   updateCampus,
   deleteCampus,
 } from "../../Controllers/Student/student_Enrollments/Campus.controller.js";
+import { authMiddleware } from "../../Middleware/authMiddleware.js";
+import { checkPermission } from "../../Middleware/checkPermission.js";
 
 const router = express.Router();
 
-router.post("/", createCampus);
 router.get("/", getCampuses);
 router.get("/:id", getCampusById);
-router.put("/:id", updateCampus);
-router.delete("/:id", deleteCampus);
+
+router.post("/", authMiddleware, checkPermission("campus:add"), createCampus);
+router.put("/:id", authMiddleware, checkPermission("campus:update"), updateCampus);
+router.delete("/:id", authMiddleware, checkPermission("campus:delete"), deleteCampus);
 
 export default router;

@@ -8,17 +8,22 @@ import {
   getVoucherStatusReport,
   updateVoucherStatus,
   deleteVoucher,
+  getStudentVouchers,
 } from "../../Controllers/Student/student_Enrollments/Voucher.controller.js";
+import { authMiddleware } from "../../Middleware/authMiddleware.js";
+import { checkPermission } from "../../Middleware/checkPermission.js";
 
 const router = express.Router();
 
-router.post("/", createVoucher);
-router.post("/bulk/batch", bulkCreateVoucherForBatch);           // poori class/batch ke liye
-router.post("/bulk/department", bulkCreateVoucherForDepartment); // poore department ke liye
-router.get("/", getVouchers);                    // ?studentId= or ?enrollmentId=&semester=&payStatus=
-router.get("/report", getVoucherStatusReport);    // ?batchId=&semester=  ⚠️ /:id se PEHLE
-router.get("/:id", getVoucherById);
-router.put("/student/:studentId/status", updateVoucherStatus); // body: { voucherId, payStatus }
-router.delete("/:id", deleteVoucher);
+router.use(authMiddleware);
 
+router.post("/", checkPermission("fee:add"), createVoucher);
+router.post("/bulk/batch", checkPermission("fee:add"), bulkCreateVoucherForBatch);
+router.post("/bulk/department", checkPermission("fee:add"), bulkCreateVoucherForDepartment);
+router.get("/", checkPermission("fee:view"), getVouchers);
+router.get("/report", checkPermission("fee:view"), getVoucherStatusReport);
+router.get("/:id", checkPermission("fee:view"), getVoucherById);
+router.put("/student/:studentId/status", checkPermission("fee:update"), updateVoucherStatus);
+router.delete("/:id", checkPermission("fee:delete"), deleteVoucher);
+router.get("/student/:studentId", getStudentVouchers); 
 export default router;

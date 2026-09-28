@@ -52,6 +52,48 @@ const PERMISSIONS = [
   { module: "subject", action: "update", label: "Update Subject", category: "academics" },
   { module: "subject", action: "delete", label: "Delete Subject", category: "academics" },
 
+  // ---------- PROGRAM SEMESTER (NEW) ----------
+  { module: "programsemester", action: "view",   label: "View Program Semester",   category: "academics" },
+  { module: "programsemester", action: "create", label: "Create Program Semester", category: "academics" },
+  { module: "programsemester", action: "update", label: "Update Program Semester", category: "academics" },
+  { module: "programsemester", action: "delete", label: "Delete Program Semester", category: "academics" },
+
+  // ---------- SEMESTER SUBJECT (NEW) ----------
+  { module: "semestersubject", action: "view",   label: "View Semester Subject",   category: "academics" },
+  { module: "semestersubject", action: "create", label: "Add Subject To Semester", category: "academics" },
+  { module: "semestersubject", action: "update", label: "Update Semester Subject", category: "academics" },
+  { module: "semestersubject", action: "delete", label: "Remove Semester Subject", category: "academics" },
+
+  // ---------- TEACHER ASSIGNMENT (NEW) ----------
+  { module: "teacherassignment", action: "view",   label: "View Teacher Assignments",   category: "academics" },
+  { module: "teacherassignment", action: "create", label: "Assign Teacher",             category: "academics" },
+  { module: "teacherassignment", action: "update", label: "Reassign Teacher",           category: "academics" },
+  { module: "teacherassignment", action: "delete", label: "Remove Teacher Assignment",  category: "academics" },
+
+  // ---------- DEPARTMENT ----------
+  { module: "department", action: "view", label: "View Department", category: "academics" },
+  { module: "department", action: "add", label: "Add Department", category: "academics" },
+  { module: "department", action: "update", label: "Update Department", category: "academics" },
+  { module: "department", action: "delete", label: "Delete Department", category: "academics" },
+
+  // ---------- SHIFT ----------
+  { module: "shift", action: "view", label: "View Shift", category: "academics" },
+  { module: "shift", action: "add", label: "Add Shift", category: "academics" },
+  { module: "shift", action: "update", label: "Update Shift", category: "academics" },
+  { module: "shift", action: "delete", label: "Delete Shift", category: "academics" },
+
+  // ---------- SESSION ----------
+  { module: "session", action: "view", label: "View Session", category: "academics" },
+  { module: "session", action: "add", label: "Add Session", category: "academics" },
+  { module: "session", action: "update", label: "Update Session", category: "academics" },
+  { module: "session", action: "delete", label: "Delete Session", category: "academics" },
+
+  // ---------- ENROLLMENT ----------
+  { module: "enrollment", action: "view", label: "View Enrollment", category: "academics" },
+  { module: "enrollment", action: "add", label: "Add Enrollment", category: "academics" },
+  { module: "enrollment", action: "update", label: "Update Enrollment", category: "academics" },
+  { module: "enrollment", action: "delete", label: "Delete Enrollment", category: "academics" },
+
   // ---------- BATCH ----------
   { module: "batch", action: "view",   label: "View Batch",   category: "academics" },
   { module: "batch", action: "add",    label: "Add Batch",    category: "academics" },
@@ -102,20 +144,20 @@ const PERMISSIONS = [
   { module: "permission", action: "delete", label: "Delete Permission",  category: "cms" },
 
   // ---------- JOB POSTS (Recruitment) ----------
-{ module: "jobpost", action: "view",   label: "View Job Posts",   category: "recruitment" },
-{ module: "jobpost", action: "create", label: "Create Job Post",  category: "recruitment" },
-{ module: "jobpost", action: "update", label: "Update Job Post",  category: "recruitment" },
-{ module: "jobpost", action: "delete", label: "Delete Job Post",  category: "recruitment" },
+  { module: "jobpost", action: "view",   label: "View Job Posts",   category: "recruitment" },
+  { module: "jobpost", action: "create", label: "Create Job Post",  category: "recruitment" },
+  { module: "jobpost", action: "update", label: "Update Job Post",  category: "recruitment" },
+  { module: "jobpost", action: "delete", label: "Delete Job Post",  category: "recruitment" },
 
-// ---------- STAFF ----------
-{ module: "staff", action: "view",    label: "View Staff Applications",   category: "recruitment" },
-{ module: "staff", action: "approve", label: "Approve/Reject Staff",      category: "recruitment" },
-{ module: "staff", action: "delete",  label: "Delete Staff Application",  category: "recruitment" },
+  // ---------- STAFF ----------
+  { module: "staff", action: "view",    label: "View Staff Applications",   category: "recruitment" },
+  { module: "staff", action: "approve", label: "Approve/Reject Staff",      category: "recruitment" },
+  { module: "staff", action: "delete",  label: "Delete Staff Application",  category: "recruitment" },
 
-// ---------- STUDENT APPLICATION ----------
-{ module: "studentapplication", action: "view",    label: "View Student Applications",   category: "academics" },
-{ module: "studentapplication", action: "approve", label: "Approve Student Applications", category: "academics" },
-{ module: "studentapplication", action: "reject",  label: "Reject Student Applications",  category: "academics" },
+  // ---------- STUDENT APPLICATION ----------
+  { module: "studentapplication", action: "view",    label: "View Student Applications",    category: "academics" },
+  { module: "studentapplication", action: "approve", label: "Approve Student Applications", category: "academics" },
+  { module: "studentapplication", action: "reject",  label: "Reject Student Applications",  category: "academics" },
 ];
 
 /* ============================================================
@@ -184,6 +226,13 @@ const SYSTEM_ROLES = [
       "class:update",
       "attendance:view",
       "report:view",
+      // new: subject / semester / teacher assignment
+      "subject:view",
+      "programsemester:view",
+      "semestersubject:view",
+      "teacherassignment:view",
+      "teacherassignment:create",
+      "teacherassignment:update",
     ],
     isSystemRole: true,
   },

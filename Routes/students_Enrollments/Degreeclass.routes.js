@@ -6,13 +6,17 @@ import {
   updateDegreeClass,
   deleteDegreeClass,
 } from "../../Controllers/Student/student_Enrollments/Degreeclass.controller.js";
+import { authMiddleware } from "../../Middleware/authMiddleware.js";
+import { checkPermission } from "../../Middleware/checkPermission.js";
 
 const router = express.Router();
 
-router.post("/", createDegreeClass);
-router.get("/", getDegreeClasses);          
+router.get("/", getDegreeClasses);
 router.get("/:id", getDegreeClassById);
-router.put("/:id", updateDegreeClass);
-router.delete("/:id", deleteDegreeClass);
+
+
+router.post("/", authMiddleware, checkPermission("class:add"), createDegreeClass);
+router.put("/:id", authMiddleware, checkPermission("class:update"), updateDegreeClass);
+router.delete("/:id", authMiddleware, checkPermission("class:delete"), deleteDegreeClass);
 
 export default router;

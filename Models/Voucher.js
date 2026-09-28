@@ -5,16 +5,16 @@ const voucherSchema = new mongoose.Schema(
     voucherNo: { type: String, unique: true },
     guid: { type: String, unique: true },
     enrollmentId: { type: mongoose.Schema.Types.ObjectId, ref: "Enrollment", required: true },
-    semester: { type: Number, required: true }, // is voucher ka taluq kis semester se hai
+    semester: { type: Number, required: true }, 
 
     issueDate: { type: Date, default: Date.now },
-    payDueDate: { type: Date, required: true },   // is date tak bina fine pay karo
-    fineDueDate: { type: Date, required: true },  // is date ke baad fine lagni shuru
+    payDueDate: { type: Date, required: true },   
+    fineDueDate: { type: Date, required: true },  
 
-    fineTypeId: { type: mongoose.Schema.Types.ObjectId, ref: "FineType" }, // optional
+    fineTypeId: { type: mongoose.Schema.Types.ObjectId, ref: "FineType" },
 
-    baseAmount: { type: Number, default: 0 },   // items ka total (fine ke bagair)
-    totalAmount: { type: Number, default: 0 },  // baseAmount + fine (paid hote waqt freeze hota hai)
+    baseAmount: { type: Number, default: 0 },   
+    totalAmount: { type: Number, default: 0 },  
 
     payStatus: { type: String, enum: ["unpaid", "paid", "cancelled"], default: "unpaid" },
     paidAt: { type: Date },

@@ -10,6 +10,9 @@ import cmsRoutes from "./Routes/CMS/index.js";
 import staffRoutes from "./Routes/Staff/index.routes.js";
 import studentRoutes from "./Routes/Student/index.js";
 
+import subject from "./Routes/admin/subject/index.routes.js"
+import Teacher from "./Routes/admin/subject/Subject.routes.js" 
+
 dotenv.config();
 
 const app = express();
@@ -51,6 +54,10 @@ app.use("/api/students", studentRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api', EnrollmentRoutes);
 app.use("/api/cms", cmsRoutes);
+
+app.use("/api",subject);
+app.use("/api", Teacher)
+
 
 app.use((err, req, res, next) => {
   console.error("UNHANDLED ERROR:", err);

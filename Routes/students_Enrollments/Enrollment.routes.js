@@ -7,14 +7,18 @@ import {
   updateEnrollment,
   deleteEnrollment,
 } from "../../Controllers/Student/student_Enrollments/Enrollment.controller.js";
+import { authMiddleware } from "../../Middleware/authMiddleware.js";
+import { checkPermission } from "../../Middleware/checkPermission.js";
 
 const router = express.Router();
 
-router.post("/", createEnrollment);
-router.post("/bulk", bulkCreateEnrollment);   // ⚠️ /:id se PEHLE (yahan koi issue nahi, "bulk" alag path hai POST mein)
-router.get("/", getEnrollments);          // ?studentId=&batchId=&status=
-router.get("/:id", getEnrollmentById);
-router.put("/:id", updateEnrollment);      // { status: "completed" / "dropped" }
-router.delete("/:id", deleteEnrollment);
+router.use(authMiddleware);
+
+router.post("/", checkPermission("enrollment:add"), createEnrollment);
+router.post("/bulk", checkPermission("enrollment:add"), bulkCreateEnrollment);
+router.get("/", checkPermission("enrollment:view"), getEnrollments); // ?studentId=&batchId=&status=
+router.get("/:id", checkPermission("enrollment:view"), getEnrollmentById);
+router.put("/:id", checkPermission("enrollment:update"), updateEnrollment);
+router.delete("/:id", checkPermission("enrollment:delete"), deleteEnrollment);
 
 export default router;

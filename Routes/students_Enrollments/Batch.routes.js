@@ -1,5 +1,4 @@
 import express from "express";
-
 import {
   createBatch,
   getBatches,
@@ -11,32 +10,24 @@ import {
   deleteBatch,
   getHierarchy,
 } from "../../Controllers/Student/student_Enrollments/Batch.controller.js";
+import { authMiddleware } from "../../Middleware/authMiddleware.js";
+import { checkPermission } from "../../Middleware/checkPermission.js";
 
 const router = express.Router();
 
-/* CREATE */
-router.post("/", createBatch);
+router.use(authMiddleware);
 
-/* READ ALL */
-router.get("/", getBatches);
-router.get( "/next-session", getNextSession
-);
-router.get( "/hierarchy", getHierarchy
-);
-router.get( "/:id", getBatchById
-);
+router.post("/", checkPermission("batch:add"), createBatch);
 
-router.get(  "/:id/semesters", getBatchSemesters
-);
+/* static paths /:id se PEHLE */
+router.get("/", checkPermission("batch:view"), getBatches);
+router.get("/next-session", checkPermission("batch:view"), getNextSession);
+router.get("/hierarchy", checkPermission("batch:view"), getHierarchy);
 
-router.put( "/:id/advance", advanceBatch
-);
-
-/* UPDATE */
-router.put( "/:id", updateBatch
-);
-/* DELETE */
-router.delete("/:id", deleteBatch
-);
+router.get("/:id", checkPermission("batch:view"), getBatchById);
+router.get("/:id/semesters", checkPermission("batch:view"), getBatchSemesters);
+router.put("/:id/advance", checkPermission("batch:update"), advanceBatch);
+router.put("/:id", checkPermission("batch:update"), updateBatch);
+router.delete("/:id", checkPermission("batch:delete"), deleteBatch);
 
 export default router;
