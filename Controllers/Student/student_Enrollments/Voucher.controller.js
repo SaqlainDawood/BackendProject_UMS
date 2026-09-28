@@ -188,25 +188,39 @@ export const getVouchers = async (req, res) => {
     } else if (enrollmentId) {
       filter.enrollmentId = enrollmentId;
     }
-    if (semester) filter.semester = semester;
+    if (semester) filter.semester = Number(semester);
     if (payStatus) filter.payStatus = payStatus;
 
     const vouchers = await Voucher.find(filter)
       .populate({
         path: "enrollmentId",
         populate: [
-          { path: "studentId", select: "firstName lastName cnic rollNo registrationNo" },
-          { path: "batchId", populate: [
-            { path: "departmentId", select: "name code" },
-            { path: "degreeClassId", select: "name code" },
-            { path: "shiftId", select: "name" },
-          ]},
+          { path: "studentId" }, // select nahi = student ki saari fields
+          {
+            path: "batchId",
+            populate: [
+              { path: "departmentId", select: "name code" },
+              { path: "degreeClassId", select: "name code" },
+              { path: "shiftId", select: "name" },
+              { path: "startSessionId", select: "name year startDate endDate" },
+            ],
+          },
         ],
       })
       .populate("fineTypeId", "name type amount")
       .sort({ semester: 1 });
 
-    res.json({ success: true, data: vouchers.map(attachFine) });
+    const data = vouchers.map((v) => {
+      const withFine = attachFine(v);
+      const batch = v.enrollmentId?.batchId;
+      return {
+        ...withFine,
+        currentSemester: batch?.currentSemester ?? null, // batch ka abhi ka semester
+        student: v.enrollmentId?.studentId || null,      // poori student details
+      };
+    });
+
+    res.json({ success: true, data });
   } catch (err) {
     res.status(400).json({ success: false, message: cleanErrorMessage(err) });
   }
@@ -472,48 +486,50 @@ export const bulkCreateVoucherForDepartment = async (req, res) => {
 };
 
 // REPORT — ek Batch+Semester ke sab enrolled students, kiski voucher ban chuki hai kiski nahi
-export const getVoucherStatusReport = async (req, res) => {
+export const getVouchers = async (req, res) => {
   try {
-    const { batchId, semester } = req.query;
-    if (!batchId || !semester) {
-      return res.status(400).json({ success: false, message: "batchId and semester are required" });
+    const { studentId, enrollmentId, semester, payStatus } = req.query;
+    const filter = {};
+
+    if (studentId) {
+      const enrollments = await Enrollment.find({ studentId }).select("_id");
+      filter.enrollmentId = { $in: enrollments.map((e) => e._id) };
+    } else if (enrollmentId) {
+      filter.enrollmentId = enrollmentId;
     }
+    if (semester) filter.semester = Number(semester);
+    if (payStatus) filter.payStatus = payStatus;
 
-    const enrollments = await Enrollment.find({ batchId, status: "active" })
-      .populate("studentId", "firstName lastName cnic rollNo registrationNo");
+    const vouchers = await Voucher.find(filter)
+      .populate({
+        path: "enrollmentId",
+        populate: [
+          { path: "studentId" },
+          {
+            path: "batchId",
+            populate: [
+              { path: "departmentId", select: "name code" },
+              { path: "degreeClassId", select: "name code" },
+              { path: "shiftId", select: "name" },
+              { path: "startSessionId", select: "name year startDate endDate" },
+            ],
+          },
+        ],
+      })
+      .populate("fineTypeId", "name type amount")
+      .sort({ semester: 1 });
 
-    const enrollmentIds = enrollments.map((e) => e._id);
-    const vouchers = await Voucher.find({ enrollmentId: { $in: enrollmentIds }, semester });
+    const data = vouchers.map((v) => ({
+      ...attachFine(v),
+      currentSemester: v.enrollmentId?.batchId?.currentSemester ?? null,
+      student: v.enrollmentId?.studentId || null,
+    }));
 
-    const voucherMap = new Map(vouchers.map((v) => [v.enrollmentId.toString(), v]));
-
-    const result = enrollments.map((enr) => {
-      const voucher = voucherMap.get(enr._id.toString());
-      return {
-        enrollmentId: enr._id,
-        student: enr.studentId,
-        voucherCreated: !!voucher,
-        voucherId: voucher?._id || null,
-        payStatus: voucher?.payStatus || null,
-      };
-    });
-
-  res.json({
-  success: true,
-  data: {
-    totalStudents: result.length,
-    vouchersCreated: result.filter((r) => r.voucherCreated).length,
-    vouchersPending: result.filter((r) => !r.voucherCreated).length,
-    paid: result.filter((r) => r.payStatus === "paid").length,
-    unpaid: result.filter((r) => r.payStatus === "unpaid").length,
-    students: result,
-  },
-});
+    res.json({ success: true, data });
   } catch (err) {
     res.status(400).json({ success: false, message: cleanErrorMessage(err) });
   }
 };
-
 // DELETE VOUCHER (+ its items)
 export const deleteVoucher = async (req, res) => {
   try {
