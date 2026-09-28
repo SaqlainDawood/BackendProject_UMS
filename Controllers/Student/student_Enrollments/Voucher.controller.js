@@ -176,55 +176,7 @@ export const createVoucher = async (req, res) => {
   }
 };
 
-// GET ALL VOUCHERS (fine live calculate hoti hai response mein)
-export const getVouchers = async (req, res) => {
-  try {
-    const { studentId, enrollmentId, semester, payStatus } = req.query;
-    const filter = {};
 
-    if (studentId) {
-      const enrollments = await Enrollment.find({ studentId }).select("_id");
-      filter.enrollmentId = { $in: enrollments.map((e) => e._id) };
-    } else if (enrollmentId) {
-      filter.enrollmentId = enrollmentId;
-    }
-    if (semester) filter.semester = Number(semester);
-    if (payStatus) filter.payStatus = payStatus;
-
-    const vouchers = await Voucher.find(filter)
-      .populate({
-        path: "enrollmentId",
-        populate: [
-          { path: "studentId" }, // select nahi = student ki saari fields
-          {
-            path: "batchId",
-            populate: [
-              { path: "departmentId", select: "name code" },
-              { path: "degreeClassId", select: "name code" },
-              { path: "shiftId", select: "name" },
-              { path: "startSessionId", select: "name year startDate endDate" },
-            ],
-          },
-        ],
-      })
-      .populate("fineTypeId", "name type amount")
-      .sort({ semester: 1 });
-
-    const data = vouchers.map((v) => {
-      const withFine = attachFine(v);
-      const batch = v.enrollmentId?.batchId;
-      return {
-        ...withFine,
-        currentSemester: batch?.currentSemester ?? null, // batch ka abhi ka semester
-        student: v.enrollmentId?.studentId || null,      // poori student details
-      };
-    });
-
-    res.json({ success: true, data });
-  } catch (err) {
-    res.status(400).json({ success: false, message: cleanErrorMessage(err) });
-  }
-};
 
 // GET VOUCHER BY ID (with items + live fine)
 export const getVoucherById = async (req, res) => {
@@ -293,50 +245,6 @@ export const getVoucherById = async (req, res) => {
   }
 };
 
-// UPDATE PAY STATUS — fine ko is waqt freeze karke totalAmount mein save kar deta hai
-export const updateVoucherStatus = async (req, res) => {
-  try {
-    const { studentId } = req.params;
-    const { voucherId, payStatus } = req.body;
-
-    if (!voucherId || !payStatus) {
-      return res.status(400).json({
-        success: false,
-        message: "voucherId and payStatus are required",
-      });
-    }
-
-    const voucher = await Voucher.findById(voucherId)
-      .populate("fineTypeId", "name type amount")
-      .populate({ path: "enrollmentId", select: "studentId" });
-
-    if (!voucher) {
-      return res.status(404).json({ success: false, message: "Voucher not found" });
-    }
-
-    // Voucher us studentId ki hi honi chahiye — warna kisi aur student ki
-    // voucher URL mein studentId badal ke update nahi ki ja sakti
-    if (String(voucher.enrollmentId?.studentId) !== String(studentId)) {
-      return res.status(400).json({
-        success: false,
-        message: "This voucher does not belong to the given student",
-      });
-    }
-
-    if (payStatus === "paid") {
-      const fineAmount = calculateFine(voucher, voucher.fineTypeId);
-      voucher.totalAmount = voucher.baseAmount + fineAmount;
-      voucher.paidAt = new Date();
-    }
-
-    voucher.payStatus = payStatus;
-    await voucher.save();
-
-    res.json({ success: true, data: attachFine(voucher) });
-  } catch (err) {
-    res.status(400).json({ success: false, message: cleanErrorMessage(err) });
-  }
-};
 
 // helper - ek enrollment ke liye voucher resolve + create karta hai (bulk aur single dono use karte hain)
 async function buildVoucherForEnrollment(enrollment, { semester, payDueDate, fineDueDate, fineTypeId, includeTransport, transportFeeTypeId, customItems }) {
@@ -485,7 +393,6 @@ export const bulkCreateVoucherForDepartment = async (req, res) => {
   }
 };
 
-// REPORT — ek Batch+Semester ke sab enrolled students, kiski voucher ban chuki hai kiski nahi
 export const getVouchers = async (req, res) => {
   try {
     const { studentId, enrollmentId, semester, payStatus } = req.query;
@@ -625,6 +532,106 @@ export const getStudentVouchers = async (req, res) => {
         sessions: Object.values(sessions),
       },
     });
+  } catch (err) {
+    res.status(400).json({ success: false, message: cleanErrorMessage(err) });
+  }
+};
+
+
+export const getVoucherStatusReport = async (req, res) => {
+  try {
+    const { batchId, semester } = req.query;
+    if (!batchId || !semester) {
+      return res.status(400).json({ success: false, message: "batchId and semester are required" });
+    }
+
+    const enrollments = await Enrollment.find({ batchId, status: "active" }).populate("studentId");
+
+    const vouchers = await Voucher.find({
+      enrollmentId: { $in: enrollments.map((e) => e._id) },
+      semester: Number(semester),
+    }).populate("fineTypeId", "name type amount");
+
+    const voucherMap = new Map(vouchers.map((v) => [v.enrollmentId.toString(), v]));
+
+    const students = enrollments.map((enr) => {
+      const voucher = voucherMap.get(enr._id.toString());
+      const withFine = voucher ? attachFine(voucher) : null;
+      return {
+        enrollmentId: enr._id,
+        student: enr.studentId,
+        voucherCreated: !!voucher,
+        voucherId: voucher?._id || null,
+        voucherNo: voucher?.voucherNo || null,
+        payStatus: voucher?.payStatus || null,
+        baseAmount: withFine?.baseAmount ?? null,
+        fineAmount: withFine?.fineAmount ?? null,
+        totalAmount: withFine?.totalAmount ?? null,
+        payDueDate: voucher?.payDueDate || null,
+        paidAt: voucher?.paidAt || null,
+      };
+    });
+
+    res.json({
+      success: true,
+      data: {
+        totalStudents: students.length,
+        vouchersCreated: students.filter((s) => s.voucherCreated).length,
+        vouchersPending: students.filter((s) => !s.voucherCreated).length,
+        paid: students.filter((s) => s.payStatus === "paid").length,
+        unpaid: students.filter((s) => s.payStatus === "unpaid").length,
+        cancelled: students.filter((s) => s.payStatus === "cancelled").length,
+        students,
+      },
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, message: cleanErrorMessage(err) });
+  }
+};
+
+// UPDATE PAY STATUS
+export const updateVoucherStatus = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { voucherId, payStatus } = req.body;
+
+    if (!voucherId || !payStatus) {
+      return res.status(400).json({ success: false, message: "voucherId and payStatus are required" });
+    }
+    if (!["unpaid", "paid", "cancelled"].includes(payStatus)) {
+      return res.status(400).json({ success: false, message: "payStatus must be unpaid, paid or cancelled" });
+    }
+
+    const voucher = await Voucher.findById(voucherId)
+      .populate("fineTypeId", "name type amount")
+      .populate({ path: "enrollmentId", select: "studentId" });
+
+    if (!voucher) {
+      return res.status(404).json({ success: false, message: "Voucher not found" });
+    }
+
+    if (String(voucher.enrollmentId?.studentId) !== String(studentId)) {
+      return res.status(400).json({ success: false, message: "This voucher does not belong to the given student" });
+    }
+
+    if (voucher.payStatus === payStatus) {
+      return res.status(400).json({ success: false, message: `Voucher is already ${payStatus}` });
+    }
+
+    if (payStatus === "paid") {
+      // fine ko is waqt freeze karo
+      voucher.totalAmount = voucher.baseAmount + calculateFine(voucher, voucher.fineTypeId);
+      voucher.paidAt = new Date();
+    } else {
+      // paid se wapas: freeze ki hui fine aur paidAt reset
+      voucher.totalAmount = voucher.baseAmount;
+      voucher.paidAt = undefined;
+    }
+
+    voucher.payStatus = payStatus;
+    await voucher.save();
+
+    res.json({ success: true, data: attachFine(voucher) });
   } catch (err) {
     res.status(400).json({ success: false, message: cleanErrorMessage(err) });
   }
