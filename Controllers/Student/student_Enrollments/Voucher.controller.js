@@ -29,10 +29,9 @@ function calculateFine(voucher, fineType) {
 
   const today = new Date();
   const fineDueDate = new Date(voucher.fineDueDate);
-  if (today <= fineDueDate) return 0; // abhi fine due date guzri nahi
-
+  if (today <= fineDueDate) return 0; 
   if (fineType.type === "fixed") {
-    return fineType.amount; // ek hi baar lagegi, multiply nahi
+    return fineType.amount; 
   }
   if (fineType.type === "perDay") {
     const daysLate = Math.ceil((today - fineDueDate) / (1000 * 60 * 60 * 24));
@@ -43,11 +42,18 @@ function calculateFine(voucher, fineType) {
 
 function attachFine(voucherDoc) {
   const voucher = voucherDoc.toObject();
-  const fineAmount = calculateFine(voucherDoc, voucherDoc.fineTypeId);
+  const fineType = voucherDoc.fineTypeId;
+  const fineAmount = calculateFine(voucherDoc, fineType);
+
+  // fine due date ke baad jo amount banegi (fixed = ek dafa, perDay = 1 din ki fine se start)
+  const potentialFine = fineType?.amount || 0;
+
   return {
     ...voucher,
     fineAmount,
     totalAmount: voucher.baseAmount + fineAmount,
+    amountAfterDueDate: voucher.baseAmount + potentialFine,
+    feeTypeName: "Semester wise",
   };
 }
 
@@ -187,61 +193,31 @@ export const getVoucherById = async (req, res) => {
         populate: [
           {
             path: "studentId",
-            select:
-              "firstName lastName name fullName cnic rollNo registrationNo studentId",
+            select: "personalInfo email rollNo registrationNo", // <-- FIX: personalInfo
           },
           {
             path: "batchId",
             populate: [
-              {
-                path: "departmentId",
-                select: "name code",
-              },
-              {
-                path: "degreeClassId",
-                select: "name code",
-              },
-              {
-                path: "shiftId",
-                select: "name",
-              },
-              {
-                path: "startSessionId",
-                select:
-                  "name year startDate endDate",
-              },
+              { path: "departmentId", select: "name code" },
+              { path: "degreeClassId", select: "name code" },
+              { path: "shiftId", select: "name" },
+              { path: "startSessionId", select: "name year startDate endDate" },
+              // { path: "campusId", select: "name" },  // <-- sirf agar Batch schema mein campusId hai
             ],
           },
         ],
       })
-      .populate(
-        "fineTypeId",
-        "name type amount"
-      );
+      .populate("fineTypeId", "name type amount");
 
     if (!voucher) {
-      return res.status(404).json({
-        success: false,
-        message: "Voucher not found",
-      });
+      return res.status(404).json({ success: false, message: "Voucher not found" });
     }
 
-    const items = await VoucherItem.find({
-      voucherId: voucher._id,
-    });
+    const items = await VoucherItem.find({ voucherId: voucher._id });
 
-    res.json({
-      success: true,
-      data: {
-        voucher: attachFine(voucher),
-        items,
-      },
-    });
+    res.json({ success: true, data: { voucher: attachFine(voucher), items } });
   } catch (err) {
-    res.status(400).json({
-      success: false,
-      message: cleanErrorMessage(err),
-    });
+    res.status(400).json({ success: false, message: cleanErrorMessage(err) });
   }
 };
 
