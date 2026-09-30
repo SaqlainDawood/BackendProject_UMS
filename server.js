@@ -12,6 +12,7 @@ import studentRoutes from "./Routes/Student/index.js";
 
 import academicRoutes from "./Routes/admin/subject/index.routes.js";
 import teacherRoutes from "./Routes/admin/teacher/index.routes.js";
+import userRoutes from "./Routes/admin/userRoutes.js";
 
 dotenv.config();
 
@@ -55,6 +56,7 @@ app.use('/api/staff', staffRoutes);
 app.use('/api', EnrollmentRoutes);
 app.use("/api/cms", cmsRoutes);
 
+app.use("/api/users", userRoutes);
 app.use("/api", academicRoutes);
 app.use("/api", teacherRoutes);
 
