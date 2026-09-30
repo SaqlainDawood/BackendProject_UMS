@@ -1,12 +1,26 @@
 import User from "../../Models/UserModel.js";
+import Role from "../../Models/RoleModel.js";
 
 export const getAllUsers = async (req, res) => {
   try {
-    const { isActive } = req.query;
+    const { isActive, roleSlug } = req.query;
     const filter = { isDeleted: false };
 
     if (isActive !== undefined) {
       filter.isActive = isActive === "true";
+    }
+
+    if (roleSlug) {
+      const role = await Role.findOne({ slug: String(roleSlug).toLowerCase() }).select("_id");
+      if (role) {
+        filter.role = role._id;
+      } else {
+        return res.status(200).json({
+          success: true,
+          count: 0,
+          data: [],
+        });
+      }
     }
 
     const users = await User.find(filter)
