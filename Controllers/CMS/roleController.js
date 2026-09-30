@@ -1,26 +1,16 @@
-// Controllers/CMS/roleController.js
 import Role from "../../Models/RoleModel.js";
 import Permission from "../../Models/PermissionModel.js";
 import User from "../../Models/UserModel.js";
 
-/* ============================================================
-   HELPER: slugify role name
-   "Exam Hall Staff" → "exam-hall-staff"
-   ============================================================ */
 const slugify = (str) =>
   str
-    .toLowerCase()
+    .toLowerCase() 
     .trim()
     .replace(/[^a-z0-9\s-]/g, "")
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-");
 
-/* ============================================================
-   1. CREATE ROLE
-   POST /api/cms/roles
-   Body: { name, description, permissions: ["student:view", ...] }
-   ============================================================ */
-export const createRole = async (req, res) => {
+    export const createRole = async (req, res) => {
   try {
     const { name, description = "", permissions = [] } = req.body;
 
@@ -77,11 +67,6 @@ export const createRole = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
-
-/* ============================================================
-   2. LIST ALL ROLES
-   GET /api/cms/roles
-   ============================================================ */
 export const getAllRoles = async (req, res) => {
   try {
     const roles = await Role.find({})
@@ -109,10 +94,6 @@ export const getAllRoles = async (req, res) => {
   }
 };
 
-/* ============================================================
-   3. GET SINGLE ROLE
-   GET /api/cms/roles/:id
-   ============================================================ */
 export const getRoleById = async (req, res) => {
   try {
     const role = await Role.findById(req.params.id).populate("permissions");
@@ -125,10 +106,6 @@ export const getRoleById = async (req, res) => {
   }
 };
 
-/* ============================================================
-   4. UPDATE ROLE (name / description)
-   PUT /api/cms/roles/:id
-   ============================================================ */
 export const updateRole = async (req, res) => {
   try {
     const { name, description } = req.body;
@@ -161,11 +138,6 @@ export const updateRole = async (req, res) => {
   }
 };
 
-/* ============================================================
-   5. UPDATE ROLE PERMISSIONS
-   PATCH /api/cms/roles/:id/permissions
-   Body: { permissions: ["student:view", "student:add"] }
-   ============================================================ */
 export const updateRolePermissions = async (req, res) => {
   try {
     const { permissions = [] } = req.body;
@@ -208,10 +180,6 @@ export const updateRolePermissions = async (req, res) => {
   }
 };
 
-/* ============================================================
-   6. TOGGLE ROLE ACTIVE
-   PATCH /api/cms/roles/:id/toggle
-   ============================================================ */
 export const toggleRoleStatus = async (req, res) => {
   try {
     const role = await Role.findById(req.params.id);

@@ -5,7 +5,7 @@ import {
   getTeacherById,
   updateTeacher,
   deactivateTeacher,
-} from "../Controllers/teacherController.js";
+} from "../../../Controllers/Admin/teacher/Teacher.controller.js";
 import { authMiddleware } from "../../../Middleware/authMiddleware.js";
 import { checkPermission } from "../../../Middleware/checkPermission.js";
 

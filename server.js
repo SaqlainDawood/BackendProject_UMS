@@ -10,8 +10,8 @@ import cmsRoutes from "./Routes/CMS/index.js";
 import staffRoutes from "./Routes/Staff/index.routes.js";
 import studentRoutes from "./Routes/Student/index.js";
 
-import subject from "./Routes/admin/subject/index.routes.js"
-import Teacher from "./Routes/admin/subject/Subject.routes.js" 
+import academicRoutes from "./Routes/admin/subject/index.routes.js";
+import teacherRoutes from "./Routes/admin/teacher/index.routes.js";
 
 dotenv.config();
 
@@ -55,8 +55,8 @@ app.use('/api/staff', staffRoutes);
 app.use('/api', EnrollmentRoutes);
 app.use("/api/cms", cmsRoutes);
 
-app.use("/api",subject);
-app.use("/api", Teacher)
+app.use("/api", academicRoutes);
+app.use("/api", teacherRoutes);
 
 
 app.use((err, req, res, next) => {

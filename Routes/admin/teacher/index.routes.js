@@ -1,12 +1,11 @@
 import express from "express";
 
-import Teacher from "./Teacher.routes.js"
-import TeacherAssignment from "./Teacherassignment.routes.js"
+import Teacher from "./Teacher.routes.js";
+import TeacherAssignment from "./Teacherassignment.routes.js";
 
 const router = express.Router();
 
-router.use("/add-teacher",Teacher);
-router.use("/Teacher-assignment",TeacherAssignment);
-
+router.use("/teachers", Teacher);
+router.use("/teacher-assignments", TeacherAssignment);
 
 export default router;
