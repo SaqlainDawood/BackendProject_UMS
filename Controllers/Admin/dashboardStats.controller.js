@@ -4,8 +4,10 @@ import Teacher from "../../Models/Teacher.js";
 export const getAdminDashboardStats = async (req, res) => {
   try {
     const currentUser = req.user;
+    const roleSlug = String(currentUser?.roleSlug || "").toLowerCase();
+    const allowedAdminRoleSlugs = ["admin", "super-admin", "superadmin"];
 
-    if (!currentUser || !["admin", "superadmin"].includes(String(currentUser.roleSlug || "").toLowerCase())) {
+    if (!currentUser || !allowedAdminRoleSlugs.includes(roleSlug)) {
       return res.status(403).json({
         success: false,
         message: "Access denied. Admin privileges required.",

@@ -35,18 +35,21 @@ const allowedOrigins = [
   "http://127.0.0.1:5176",
 ];
 
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
+
+  if (allowedOrigins.includes(origin)) return true;
+
+  return (
+    /^http:\/\/localhost:\d+$/.test(origin) ||
+    /^http:\/\/127\.0\.0\.1:\d+$/.test(origin) ||
+    /^https:\/\/.*\.vercel\.app$/.test(origin)
+  );
+};
+
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-      return;
-    }
-
-    const isLocalDevOrigin =
-      /^http:\/\/localhost:\d+$/.test(origin) ||
-      /^http:\/\/127\.0\.0\.1:\d+$/.test(origin);
-
-    if (isLocalDevOrigin) {
+    if (isAllowedOrigin(origin)) {
       callback(null, true);
       return;
     }
