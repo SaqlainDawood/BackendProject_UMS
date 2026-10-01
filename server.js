@@ -20,19 +20,41 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 8000;
 
+const allowedOrigins = [
+  "https://studentteacherportal-j7yl2fvuj-saqlain-dawoods-projects.vercel.app",
+  "https://studentteacherportal.vercel.app",
+  "https://admin-pannel-black.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175",
+  "http://localhost:5176",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
+  "http://127.0.0.1:5175",
+  "http://127.0.0.1:5176",
+];
+
 app.use(cors({
-    origin:[
-         "https://studentteacherportal-j7yl2fvuj-saqlain-dawoods-projects.vercel.app",
-         'https://studentteacherportal.vercel.app',
-          "https://admin-pannel-black.vercel.app",
-            "http://localhost:5173",
-            "http://localhost:5174",
-            "http://localhost:5175",
-            "http://localhost:5176",
-    ],
-    methods:['GET', 'POST','PUT','DELETE','OPTIONS', 'PATCH' ,'PUT', 'HEAD', 'CONNECT', 'TRACE', 'COPY', 'LOCK', 'UNLOCK', 'SEARCH', 'MKCOL', 'MOVE', 'PROPFIND', 'PROPPATCH', 'REPORT', 'CHECKOUT', 'MERGE', 'M-SEARCH', 'NOTIFY', 'SUBSCRIBE', 'UNSUBSCRIBE',],
-    allowedHeaders:['Content-Type','Authorization'],
-    credentials:true,
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    const isLocalDevOrigin =
+      /^http:\/\/localhost:\d+$/.test(origin) ||
+      /^http:\/\/127\.0\.0\.1:\d+$/.test(origin);
+
+    if (isLocalDevOrigin) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error("Not allowed by CORS"));
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  credentials: true,
 }));
 
 app.use(express.json());
