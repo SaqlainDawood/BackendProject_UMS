@@ -39,6 +39,11 @@ const degreeClassSchema = new mongoose.Schema(
       enum: [4, 8],
       required: true,
     },
+    totalCreditHours: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     isActive: {
       type: Boolean,
       default: true,

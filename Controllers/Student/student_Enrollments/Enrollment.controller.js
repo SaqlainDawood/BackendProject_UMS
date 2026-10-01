@@ -1,6 +1,67 @@
+import mongoose from "mongoose";
 import Enrollment from "../../../Models/Enrollment.js";
 import Student from "../../../Models/StudentModel.js";
 import Batch from "../../../Models/Batch.js";
+import Subject from "../../../Models/Subject.js";
+
+const normalizePrereqSubjects = (subject) => {
+  if (!subject) return [];
+
+  const prereqList = Array.isArray(subject.prerequisites)
+    ? subject.prerequisites
+    : [];
+
+  return prereqList
+    .map((item) => (typeof item === "string" ? item : item?.subjectId || item?._id))
+    .filter(Boolean)
+    .map((id) => String(id));
+};
+
+const getStudentSubjectStatus = async (studentId, subjectId) => {
+  const resultModels = [
+    mongoose.models.Result,
+    mongoose.models.Marks,
+    mongoose.models.Mark,
+    mongoose.models.StudentResult,
+    mongoose.models.StudentMarks,
+  ].filter(Boolean);
+
+  for (const model of resultModels) {
+    const doc = await model
+      .findOne({
+        studentId,
+        $or: [
+          { subjectId },
+          { subject: subjectId },
+          { courseId: subjectId },
+          { subjectCode: subjectId },
+        ],
+      })
+      .lean();
+
+    if (!doc) continue;
+
+    const rawStatus =
+      doc.resultStatus ||
+      doc.status ||
+      doc.passStatus ||
+      doc.gradeStatus ||
+      doc.finalStatus ||
+      "pending";
+
+    const normalized = String(rawStatus).toLowerCase();
+
+    if (["passed", "pass", "p", "clear", "approved"].includes(normalized)) {
+      return "passed";
+    }
+
+    if (["failed", "fail", "f", "reappear", "not passed", "not_passed"].includes(normalized)) {
+      return "failed";
+    }
+  }
+
+  return "pending";
+};
 
 function cleanErrorMessage(err) {
   if (err.name === "CastError") {
@@ -30,7 +91,7 @@ function attachBatchInfo(enrollmentDoc) {
 // CREATE
 export const createEnrollment = async (req, res) => {
   try {
-    const { studentId, batchId } = req.body;
+    const { studentId, batchId, subjectId } = req.body;
 
     const student = await Student.findById(studentId);
     if (!student) {
@@ -40,6 +101,25 @@ export const createEnrollment = async (req, res) => {
     const batch = await Batch.findById(batchId);
     if (!batch) {
       return res.status(400).json({ success: false, message: "Invalid batchId" });
+    }
+
+    if (subjectId) {
+      const subject = await Subject.findById(subjectId).populate("prerequisites.subjectId", "name");
+      if (!subject) {
+        return res.status(400).json({ success: false, message: "Invalid subjectId" });
+      }
+
+      const prereqIds = normalizePrereqSubjects(subject);
+      for (const prereqId of prereqIds) {
+        const prereqStatus = await getStudentSubjectStatus(studentId, prereqId);
+        if (prereqStatus !== "passed") {
+          const prereqSubject = await Subject.findById(prereqId).select("name");
+          return res.status(400).json({
+            success: false,
+            message: `Cannot enroll in ${subject.name}: prerequisite ${prereqSubject?.name || "subject"} not passed.`,
+          });
+        }
+      }
     }
 
     const enrollment = await Enrollment.create({ studentId, batchId });
@@ -103,6 +183,32 @@ export const getEnrollmentById = async (req, res) => {
 // UPDATE (status change - active/completed/dropped)
 export const updateEnrollment = async (req, res) => {
   try {
+    const { subjectId } = req.body;
+    const existingEnrollment = await Enrollment.findById(req.params.id);
+
+    if (!existingEnrollment) {
+      return res.status(404).json({ success: false, message: "Enrollment not found" });
+    }
+
+    if (subjectId) {
+      const subject = await Subject.findById(subjectId).populate("prerequisites.subjectId", "name");
+      if (!subject) {
+        return res.status(400).json({ success: false, message: "Invalid subjectId" });
+      }
+
+      const prereqIds = normalizePrereqSubjects(subject);
+      for (const prereqId of prereqIds) {
+        const prereqStatus = await getStudentSubjectStatus(existingEnrollment.studentId, prereqId);
+        if (prereqStatus !== "passed") {
+          const prereqSubject = await Subject.findById(prereqId).select("name");
+          return res.status(400).json({
+            success: false,
+            message: `Cannot enroll in ${subject.name}: prerequisite ${prereqSubject?.name || "subject"} not passed.`,
+          });
+        }
+      }
+    }
+
     const enrollment = await Enrollment.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
@@ -117,9 +223,6 @@ export const updateEnrollment = async (req, res) => {
         ],
       });
 
-    if (!enrollment) {
-      return res.status(404).json({ success: false, message: "Enrollment not found" });
-    }
     res.json({ success: true, data: attachBatchInfo(enrollment) });
   } catch (err) {
     res.status(400).json({ success: false, message: cleanErrorMessage(err) });

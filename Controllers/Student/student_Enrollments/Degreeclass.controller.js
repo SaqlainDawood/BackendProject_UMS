@@ -25,7 +25,7 @@ const programConfig = {
 // CREATE
 export const createDegreeClass = async (req, res) => {
   try {
-    const { name, code, departmentId, programType } = req.body;
+    const { name, code, departmentId, programType, totalCreditHours } = req.body;
 
     // Validate program type
     const config = programConfig[programType];
@@ -56,6 +56,7 @@ export const createDegreeClass = async (req, res) => {
       duration: config.duration,
       startSemester: config.startSemester,
       endSemester: config.endSemester,
+      totalCreditHours: Number(totalCreditHours || 0),
     });
 
     res.status(201).json({
@@ -132,7 +133,7 @@ export const getDegreeClassById = async (req, res) => {
 // UPDATE
 export const updateDegreeClass = async (req, res) => {
   try {
-    const { departmentId, programType } = req.body;
+    const { departmentId, programType, totalCreditHours } = req.body;
 
     // Check department if provided
     if (departmentId) {
@@ -158,8 +159,11 @@ export const updateDegreeClass = async (req, res) => {
 
     // If programType is being updated,
     // automatically update duration and semesters
-    let updateData = {
+    const updateData = {
       ...req.body,
+      ...(typeof totalCreditHours !== "undefined"
+        ? { totalCreditHours: Number(totalCreditHours) }
+        : {}),
     };
 
     if (programType) {
@@ -186,9 +190,17 @@ export const updateDegreeClass = async (req, res) => {
       }
     );
 
+    const warning = degreeClass?.totalCreditHours
+      ? "warning"
+      : null;
+
     res.json({
       success: true,
       data: degreeClass,
+      ...(warning && {
+        warning:
+          "Assigned credit hours exceed the class total credit hours. This is a warning only, not a blocking error.",
+      }),
     });
   } catch (err) {
     if (err.code === 11000) {

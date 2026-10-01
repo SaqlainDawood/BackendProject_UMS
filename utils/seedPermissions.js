@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import Permission from "../Models/PermissionModel.js";
 import Role from "../Models/RoleModel.js";
-import connectDB from "../Config/ConnectDB.js"; // apne path ke mutabiq
+import connectDB from "../Config/ConnectDB.js";
 
 dotenv.config();
 
@@ -52,45 +52,67 @@ const PERMISSIONS = [
   { module: "subject", action: "update", label: "Update Subject", category: "academics" },
   { module: "subject", action: "delete", label: "Delete Subject", category: "academics" },
 
-  // ---------- PROGRAM SEMESTER (NEW) ----------
+  // ---------- PROGRAM SEMESTER ----------
   { module: "programsemester", action: "view",   label: "View Program Semester",   category: "academics" },
   { module: "programsemester", action: "create", label: "Create Program Semester", category: "academics" },
   { module: "programsemester", action: "update", label: "Update Program Semester", category: "academics" },
   { module: "programsemester", action: "delete", label: "Delete Program Semester", category: "academics" },
 
-  // ---------- SEMESTER SUBJECT (NEW) ----------
+  // ---------- SEMESTER SUBJECT ----------
   { module: "semestersubject", action: "view",   label: "View Semester Subject",   category: "academics" },
   { module: "semestersubject", action: "create", label: "Add Subject To Semester", category: "academics" },
   { module: "semestersubject", action: "update", label: "Update Semester Subject", category: "academics" },
   { module: "semestersubject", action: "delete", label: "Remove Semester Subject", category: "academics" },
 
-  // ---------- TEACHER ASSIGNMENT (NEW) ----------
-  { module: "teacherassignment", action: "view",   label: "View Teacher Assignments",   category: "academics" },
-  { module: "teacherassignment", action: "create", label: "Assign Teacher",             category: "academics" },
-  { module: "teacherassignment", action: "update", label: "Reassign Teacher",           category: "academics" },
-  { module: "teacherassignment", action: "delete", label: "Remove Teacher Assignment",  category: "academics" },
+  // ---------- TEACHER ASSIGNMENT ----------
+  { module: "teacherassignment", action: "view",   label: "View Teacher Assignments",  category: "academics" },
+  { module: "teacherassignment", action: "create", label: "Assign Teacher",            category: "academics" },
+  { module: "teacherassignment", action: "update", label: "Reassign Teacher",          category: "academics" },
+  { module: "teacherassignment", action: "delete", label: "Remove Teacher Assignment", category: "academics" },
+
+  // ---------- TIMETABLE (NEW) ----------
+  { module: "timetable", action: "view",     label: "View Timetable",           category: "academics" },
+  { module: "timetable", action: "create",   label: "Create Timetable Entry",   category: "academics" },
+  { module: "timetable", action: "update",   label: "Update Timetable Entry",   category: "academics" },
+  { module: "timetable", action: "delete",   label: "Delete Timetable Entry",   category: "academics" },
+  { module: "timetable", action: "override", label: "Override Lecture Limit",   category: "academics" },
+
+  // ---------- TIME SLOT (NEW) ----------
+  { module: "timeslot", action: "view",   label: "View Time Slots",   category: "academics" },
+  { module: "timeslot", action: "create", label: "Create Time Slot",  category: "academics" },
+  { module: "timeslot", action: "update", label: "Update Time Slot",  category: "academics" },
+  { module: "timeslot", action: "delete", label: "Delete Time Slot",  category: "academics" },
+
+  // ---------- ROOM (NEW) ----------
+  { module: "room", action: "view",   label: "View Rooms",   category: "academics" },
+  { module: "room", action: "create", label: "Create Room",  category: "academics" },
+  { module: "room", action: "update", label: "Update Room",  category: "academics" },
+  { module: "room", action: "delete", label: "Delete Room",  category: "academics" },
+
+  // ---------- STUDENT PORTAL (NEW) ----------
+  { module: "studentportal", action: "view", label: "Student Portal Access", category: "student" },
 
   // ---------- DEPARTMENT ----------
-  { module: "department", action: "view", label: "View Department", category: "academics" },
-  { module: "department", action: "add", label: "Add Department", category: "academics" },
+  { module: "department", action: "view",   label: "View Department",   category: "academics" },
+  { module: "department", action: "add",    label: "Add Department",    category: "academics" },
   { module: "department", action: "update", label: "Update Department", category: "academics" },
   { module: "department", action: "delete", label: "Delete Department", category: "academics" },
 
   // ---------- SHIFT ----------
-  { module: "shift", action: "view", label: "View Shift", category: "academics" },
-  { module: "shift", action: "add", label: "Add Shift", category: "academics" },
+  { module: "shift", action: "view",   label: "View Shift",   category: "academics" },
+  { module: "shift", action: "add",    label: "Add Shift",    category: "academics" },
   { module: "shift", action: "update", label: "Update Shift", category: "academics" },
   { module: "shift", action: "delete", label: "Delete Shift", category: "academics" },
 
   // ---------- SESSION ----------
-  { module: "session", action: "view", label: "View Session", category: "academics" },
-  { module: "session", action: "add", label: "Add Session", category: "academics" },
+  { module: "session", action: "view",   label: "View Session",   category: "academics" },
+  { module: "session", action: "add",    label: "Add Session",    category: "academics" },
   { module: "session", action: "update", label: "Update Session", category: "academics" },
   { module: "session", action: "delete", label: "Delete Session", category: "academics" },
 
   // ---------- ENROLLMENT ----------
-  { module: "enrollment", action: "view", label: "View Enrollment", category: "academics" },
-  { module: "enrollment", action: "add", label: "Add Enrollment", category: "academics" },
+  { module: "enrollment", action: "view",   label: "View Enrollment",   category: "academics" },
+  { module: "enrollment", action: "add",    label: "Add Enrollment",    category: "academics" },
   { module: "enrollment", action: "update", label: "Update Enrollment", category: "academics" },
   { module: "enrollment", action: "delete", label: "Delete Enrollment", category: "academics" },
 
@@ -134,14 +156,13 @@ const PERMISSIONS = [
   { module: "report", action: "download", label: "Download Reports", category: "reports" },
 
   // ---------- CMS (Role & Permission Management) ----------
-  { module: "role", action: "view",   label: "View Roles",   category: "cms" },
-  { module: "role", action: "create", label: "Create Role",  category: "cms" },
-  { module: "role", action: "update", label: "Update Role",  category: "cms" },
-  { module: "role", action: "delete", label: "Delete Role",  category: "cms" },
-
-  { module: "permission", action: "view",   label: "View Permissions",   category: "cms" },
-  { module: "permission", action: "create", label: "Create Permission",  category: "cms" },
-  { module: "permission", action: "delete", label: "Delete Permission",  category: "cms" },
+  { module: "role",       action: "view",   label: "View Roles",        category: "cms" },
+  { module: "role",       action: "create", label: "Create Role",       category: "cms" },
+  { module: "role",       action: "update", label: "Update Role",       category: "cms" },
+  { module: "role",       action: "delete", label: "Delete Role",       category: "cms" },
+  { module: "permission", action: "view",   label: "View Permissions",  category: "cms" },
+  { module: "permission", action: "create", label: "Create Permission", category: "cms" },
+  { module: "permission", action: "delete", label: "Delete Permission", category: "cms" },
 
   // ---------- JOB POSTS (Recruitment) ----------
   { module: "jobpost", action: "view",   label: "View Job Posts",   category: "recruitment" },
@@ -150,9 +171,9 @@ const PERMISSIONS = [
   { module: "jobpost", action: "delete", label: "Delete Job Post",  category: "recruitment" },
 
   // ---------- STAFF ----------
-  { module: "staff", action: "view",    label: "View Staff Applications",   category: "recruitment" },
-  { module: "staff", action: "approve", label: "Approve/Reject Staff",      category: "recruitment" },
-  { module: "staff", action: "delete",  label: "Delete Staff Application",  category: "recruitment" },
+  { module: "staff", action: "view",    label: "View Staff Applications",  category: "recruitment" },
+  { module: "staff", action: "approve", label: "Approve/Reject Staff",     category: "recruitment" },
+  { module: "staff", action: "delete",  label: "Delete Staff Application", category: "recruitment" },
 
   // ---------- STUDENT APPLICATION ----------
   { module: "studentapplication", action: "view",    label: "View Student Applications",    category: "academics" },
@@ -161,7 +182,7 @@ const PERMISSIONS = [
 ];
 
 /* ============================================================
-   SYSTEM ROLES (with slug — auto-created / updated on seed)
+   SYSTEM ROLES
    ============================================================ */
 const SYSTEM_ROLES = [
   {
@@ -196,6 +217,7 @@ const SYSTEM_ROLES = [
       "exam:view",
       "subject:view",
       "class:view",
+      "timetable:view",
     ],
     isSystemRole: true,
   },
@@ -210,6 +232,7 @@ const SYSTEM_ROLES = [
       "exam:view",
       "fee:view",
       "notification:view",
+      "studentportal:view",   // NEW — student portal subjects + challans
     ],
     isSystemRole: true,
   },
@@ -226,13 +249,17 @@ const SYSTEM_ROLES = [
       "class:update",
       "attendance:view",
       "report:view",
-      // new: subject / semester / teacher assignment
       "subject:view",
       "programsemester:view",
       "semestersubject:view",
       "teacherassignment:view",
       "teacherassignment:create",
       "teacherassignment:update",
+      "timetable:view",
+      "timetable:create",
+      "timetable:update",
+      "room:view",
+      "timeslot:view",
     ],
     isSystemRole: true,
   },
