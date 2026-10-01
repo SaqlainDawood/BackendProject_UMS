@@ -22,7 +22,7 @@ const generateStudentToken = (student) => {
 /* HELPER: build the link the USER clicks (must go to the frontend page,
    which then calls the API — not straight to the API route) */
 const buildFrontendUrl = (path) => {
-  const FRONT_END_URL = process.env.FRONT_END_URL || "http://localhost:5173";
+  const FRONT_END_URL = process.env.FRONT_END_URL || "https://studentteacherportal.vercel.app";
   return `${FRONT_END_URL}${path}`;
 };
 

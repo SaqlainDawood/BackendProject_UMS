@@ -17,7 +17,7 @@ export const sendCoordEmail = async(data)=>{
           pass: process.env.EMAIL_PASS,
         },
       });
-     const loginURL = "http://localhost:8000/coordinator/login";
+     const loginURL = "https://admin-pannel-black.vercel.app/coordinator/login";
      const htmlTemplate = `
   <!DOCTYPE html>
   <html>
