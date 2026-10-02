@@ -15,6 +15,14 @@ import teacherRoutes from "./Routes/admin/teacher/index.routes.js";
 import timetableRoutes from "./Routes/admin/timetable.routes.js";
 import dashboardRoutes from "./Routes/admin/dashboard.routes.js";
 import userRoutes from "./Routes/admin/userRoutes.js";
+import studentAdminRoutes from "./Routes/admin/student.routes.js";
+import { authMiddleware } from "./Middleware/authMiddleware.js";
+import { checkPermission } from "./Middleware/checkPermission.js";
+import {
+  getAllStudentUsers,
+  getStudentUserById,
+  getAdminStudentById,
+} from "./Controllers/Admin/StudentAdminController.js";
 
 dotenv.config();
 
@@ -93,6 +101,11 @@ app.use('/api', EnrollmentRoutes);
 app.use("/api/cms", cmsRoutes);
 
 app.use("/api/users", userRoutes);
+app.get("/api/admin/students", authMiddleware, checkPermission("student:view"), getAllStudentUsers);
+app.get("/api/admin/students/:userId", authMiddleware, checkPermission("student:view"), getStudentUserById);
+app.get("/api/admin/stats/students/all", authMiddleware, checkPermission("student:view"), getAllStudentUsers);
+app.get("/api/admin/student/view/:id", authMiddleware, checkPermission("student:view"), getAdminStudentById);
+app.get("/api/admin/student/:id", authMiddleware, checkPermission("student:view"), getAdminStudentById);
 app.use("/api/admin", dashboardRoutes);
 app.use("/api", academicRoutes);
 app.use("/api", teacherRoutes);
