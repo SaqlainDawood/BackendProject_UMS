@@ -43,7 +43,8 @@ const isAllowedOrigin = (origin) => {
   return (
     /^http:\/\/localhost:\d+$/.test(origin) ||
     /^http:\/\/127\.0\.0\.1:\d+$/.test(origin) ||
-    /^https:\/\/.*\.vercel\.app$/.test(origin)
+    // Sirf apne projects ke Vercel preview URLs (har *.vercel.app nahi)
+    /^https:\/\/(studentteacherportal|admin-pannel)[a-z0-9-]*\.vercel\.app$/.test(origin)
   );
 };
 
@@ -63,6 +64,14 @@ app.use(cors({
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// API responses cache na hon (304 / purana CORS header wala masla band)
+app.set("etag", false);
+app.use("/api", (req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Vary", "Origin");
+  next();
+});
 
 app.get('/' , (req , res)=>{
     res.send("Welcome to the express")
