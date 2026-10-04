@@ -1,10 +1,4 @@
-/**
- * Room.js
- *
- * Physical rooms/labs.
- * Timetable entry mein roomId (ref) store hoga, string nahi.
- * Room conflict check: (roomId, sessionId, day, periodNo) unique hona chahiye.
- */
+
 import mongoose from "mongoose";
 
 const roomSchema = new mongoose.Schema(
