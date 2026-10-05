@@ -5,12 +5,16 @@ import {
   updateTimetableEntry,
   deleteTimetableEntry,
   getTeacherWorkload,
+  getAvailability,
+  assignTeacher,
+  generateTimetable,
 } from "../../Controllers/Admin/timetable.controller.js";
 import { authMiddleware } from "../../Middleware/authMiddleware.js";
 import { checkPermission } from "../../Middleware/checkPermission.js";
 
 const router = express.Router();
 
+// ---- View ----
 router.get(
   "/timetable/batches/:batchId/summary",
   authMiddleware,
@@ -25,6 +29,38 @@ router.get(
   getTeacherWorkload
 );
 
+// Must stay above "/timetable/:id" routes
+router.get(
+  "/timetable/availability",
+  authMiddleware,
+  checkPermission("timetable:view"),
+  getAvailability
+);
+
+// ---- Teacher assignment ----
+router.post(
+  "/timetable/assign-teacher",
+  authMiddleware,
+  checkPermission("timetable:create"),
+  assignTeacher
+);
+
+// ---- Auto generation (body: { dryRun?, allowPartial?, batchIds? }) ----
+router.post(
+  "/timetable/batches/:batchId/generate",
+  authMiddleware,
+  checkPermission("timetable:create"),
+  generateTimetable
+);
+
+router.post(
+  "/timetable/generate",
+  authMiddleware,
+  checkPermission("timetable:create"),
+  generateTimetable
+);
+
+// ---- Timetable entries ----
 router.post(
   "/timetable",
   authMiddleware,
