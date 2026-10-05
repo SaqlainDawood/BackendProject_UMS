@@ -8,7 +8,7 @@ import Teacher from "../../Models/Teacher.js";
 import Room from "../../Models/Room.js";
 import TimeSlot from "../../Models/TimeSlot.js";
 import Session from "../../Models/Session.js";
-import SubjectTeacherDefault from "../../Models/SubjectTeacherDefault.js";
+import SubjectTeacherDefault from "../../Models/SubjectTeacherdefault.js";
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
