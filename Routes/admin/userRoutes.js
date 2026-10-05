@@ -3,7 +3,7 @@ import { getAllUsers } from "../../Controllers/Admin/userController.js";
 import { authMiddleware } from "../../Middleware/authMiddleware.js";
 import { checkPermission } from "../../Middleware/checkPermission.js";
 
-constrouter = express.Router();
+const router = express.Router();
 
 router.get(
   "/",
