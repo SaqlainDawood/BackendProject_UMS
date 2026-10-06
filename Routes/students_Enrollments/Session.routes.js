@@ -16,11 +16,11 @@ const router = express.Router();
 router.use(authMiddleware);
 
 router.post("/generate", checkPermission("session:add"), generateSessionsForDegreeClass);
-router.get("/", checkPermission("session:view"), getSessions);
+router.get("/", getSessions);
 router.get("/current", checkPermission("session:view"), getCurrentSession);
 router.get("/status", checkPermission("session:view"), getSessionStatus);
 router.delete("/bulk/:degreeClassId", checkPermission("session:delete"), deleteSessionsByDegreeClass);
-router.get("/:id", checkPermission("session:view"), getSessionById);
+router.get("/:id", getSessionById);
 router.put("/:id", checkPermission("session:update"), updateSession);
 
 export default router;

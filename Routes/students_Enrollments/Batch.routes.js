@@ -20,11 +20,11 @@ router.use(authMiddleware);
 router.post("/", checkPermission("batch:add"), createBatch);
 
 /* static paths /:id se PEHLE */
-router.get("/", checkPermission("batch:view"), getBatches);
+router.get("/",  getBatches);
 router.get("/next-session", checkPermission("batch:view"), getNextSession);
 router.get("/hierarchy", checkPermission("batch:view"), getHierarchy);
 
-router.get("/:id", checkPermission("batch:view"), getBatchById);
+router.get("/:id",  getBatchById);
 router.get("/:id/semesters", checkPermission("batch:view"), getBatchSemesters);
 router.put("/:id/advance", checkPermission("batch:update"), advanceBatch);
 router.put("/:id", checkPermission("batch:update"), updateBatch);
