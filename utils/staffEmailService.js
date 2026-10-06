@@ -1,84 +1,6 @@
-import axios from "axios";
-import nodemailer from "nodemailer";
-import dotenv from "dotenv";
-import dns from "dns";
+import { sendMail } from "./mailer.js";
 
-dotenv.config();
-dns.setDefaultResultOrder("ipv4first");
-const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
-const gmailTransporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
-});
-const sendViaBrevo = async ({ to, subject, html, text }) => {
-  const apiKey = process.env.BREVO_API_KEY;
-  if (!apiKey) {
-    throw new Error("BREVO_API_KEY missing");
-  }
-  const senderEmail =
-    process.env.BREVO_EMAIL_USER || process.env.EMAIL_USER;
-  if (!senderEmail) {
-    throw new Error("BREVO_EMAIL_USER / EMAIL_USER missing");
-  }
-  const payload = {
-    sender: {
-      email: senderEmail,
-      name: process.env.UNIVERSITY_NAME || "UMS Portal",
-    },
-    to: [{ email: to }],
-    subject,
-    htmlContent: html || undefined,
-    textContent: text || undefined,
-  };
-  const res = await axios.post(BREVO_API_URL, payload, {
-    headers: {
-      accept: "application/json",
-      "api-key": apiKey,
-      "content-type": "application/json",
-    },
-    timeout: 20000,
-  });
-
-  console.log(
-    `✅ Staff email sent via Brevo to ${to} — msgId: ${res.data?.messageId}`
-  );
-  return {
-    success: true,
-    provider: "brevo",
-    messageId: res.data?.messageId || null,
-  };
-};
-const sendViaGmail = async ({ to, subject, html, text }) => {
-  const gmailUser = process.env.GMAIL_USER;
-  const gmailPassword = process.env.GMAIL_APP_PASSWORD;
-  if (!gmailUser) {
-    throw new Error("GMAIL_USER missing");
-  }
-  if (!gmailPassword) {
-    throw new Error("GMAIL_APP_PASSWORD missing");
-  }
-  const appName = process.env.UNIVERSITY_NAME || "UMS Portal";
-  const info = await gmailTransporter.sendMail({
-    from: `"${appName}" <${gmailUser}>`,
-    to,
-    subject,
-    text,
-    html,
-  });
-
-  console.log(
-    `✅ Staff email sent via Gmail fallback to ${to} — msgId: ${info.messageId}`
-  );
-  return {
-    success: true,
-    provider: "gmail",
-    messageId: info.messageId || null,
-  };
-};
-const sendEmail = async ({ to, subject, html, text }) => {
+const sendEmail = async ({ to, subject, html, text, replyTo, unsubscribeUrl }) => {
   try {
     if (!to || !subject || (!html && !text)) {
       return {
@@ -87,64 +9,9 @@ const sendEmail = async ({ to, subject, html, text }) => {
       };
     }
 
-    let brevoError = null;
-    let gmailError = null;
-    try {
-      const result = await sendViaBrevo({
-        to,
-        subject,
-        html,
-        text,
-      });
-
-      console.log(`✅ Staff email delivered via Brevo to ${to}`);
-
-      return result;
-    } catch (err) {
-      brevoError =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        err.message ||
-        "Unknown Brevo error";
-
-      console.warn(
-        `⚠️ Staff Brevo failed for ${to}: ${brevoError}`
-      );
-    }
-    try {
-      const result = await sendViaGmail({
-        to,
-        subject,
-        html,
-        text,
-      });
-
-      console.log(
-        `✅ Staff email delivered via Gmail fallback to ${to}`
-      );
-
-      return result;
-    } catch (err) {
-      gmailError =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        err.message ||
-        "Unknown Gmail error";
-
-      console.error(
-        `❌ Staff Gmail fallback failed for ${to}: ${gmailError}`
-      );
-    }
-    return {
-      success: false,
-      error: `Brevo: ${brevoError} | Gmail: ${gmailError}`,
-    };
+    return await sendMail({ to, subject, html, text, replyTo, unsubscribeUrl });
   } catch (err) {
-    console.error(
-      "❌ staffEmailService unexpected error:",
-      err.message
-    );
-
+    console.error("staffEmailService send failed:", err.message);
     return {
       success: false,
       error: err.message,

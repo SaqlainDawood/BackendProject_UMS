@@ -1,120 +1,17 @@
 // utils/studentEmailService.js
-import axios from "axios";
-import nodemailer from "nodemailer";
-import dotenv from "dotenv";
-import dns from "dns";
+import { sendMail } from "./mailer.js";
 
-dotenv.config();
-
-// ✅ DNS fix for Vercel
-dns.setDefaultResultOrder("ipv4first");
-
-// ============================================================
-// BREVO CONFIG
-// ============================================================
-const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
-
-// ============================================================
-// GMAIL TRANSPORTER (Fallback)
-// ============================================================
-const gmailTransporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
-});
-
-// ============================================================
-// BREVO SENDER
-// ============================================================
-const sendViaBrevo = async ({ to, subject, html }) => {
-  const apiKey = process.env.BREVO_API_KEY;
-  if (!apiKey) throw new Error("BREVO_API_KEY missing");
-
-  const payload = {
-    sender: {
-      email: process.env.BREVO_EMAIL_USER,
-      name: process.env.UNIVERSITY_NAME || "UMS Portal",
-    },
-    to: [{ email: to }],
-    subject,
-    htmlContent: html,
-  };
-
-  const res = await axios.post(BREVO_API_URL, payload, {
-    headers: {
-      accept: "application/json",
-      "api-key": apiKey,
-      "content-type": "application/json",
-    },
-    timeout: 20000,
-  });
-
-  return {
-    success: true,
-    provider: "brevo",
-    messageId: res.data?.messageId || null,
-  };
-};
-
-// ============================================================
-// GMAIL SENDER (Fallback)
-// ============================================================
-const sendViaGmail = async ({ to, subject, html }) => {
-  const appName = process.env.UNIVERSITY_NAME || "UMS Portal";
-
-  const info = await gmailTransporter.sendMail({
-    from: `"${appName}" <${process.env.GMAIL_USER}>`,
-    to,
-    subject,
-    html,
-  });
-
-  return {
-    success: true,
-    provider: "gmail",
-    messageId: info.messageId || null,
-  };
-};
-
-// ============================================================
-// CORE SENDER — Brevo primary, Gmail fallback
-// ============================================================
-const sendEmail = async ({ to, subject, html }) => {
-  if (!to || !subject || !html) {
+const sendEmail = async ({ to, subject, html, text, replyTo, unsubscribeUrl }) => {
+  if (!to || !subject || (!html && !text)) {
     return { success: false, error: "Missing required fields" };
   }
 
-  let brevoError = null;
-  let gmailError = null;
-
-  // ---------- Try Brevo First ----------
   try {
-    const result = await sendViaBrevo({ to, subject, html });
-    console.log(`✅ Email sent via Brevo to ${to}`);
-    return result;
-  } catch (err) {
-    brevoError =
-      err.response?.data?.message || err.response?.data?.error || err.message;
-    console.warn(`⚠️ Brevo failed for ${to}: ${brevoError}`);
+    return await sendMail({ to, subject, html, text, replyTo, unsubscribeUrl });
+  } catch (error) {
+    console.error(`Email send failed for ${to}:`, error.message);
+    return { success: false, error: error.message };
   }
-
-  // ---------- Fallback to Gmail ----------
-  try {
-    const result = await sendViaGmail({ to, subject, html });
-    console.log(`✅ Email sent via Gmail (fallback) to ${to}`);
-    return result;
-  } catch (err) {
-    gmailError = err.message;
-    console.error(`❌ Gmail fallback failed for ${to}: ${gmailError}`);
-  }
-
-  // ---------- Both Failed ----------
-  return {
-    success: false,
-    error: `Brevo: ${brevoError} | Gmail: ${gmailError}`,
-  };
 };
 
 // ============================================================
