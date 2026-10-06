@@ -19,13 +19,14 @@ const htmlToText = (html = "") => {
 };
 
 const getTransporter = () => {
-  const host = process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com";
+  const hasBrevoConfig = Boolean(process.env.BREVO_SMTP_USER || process.env.BREVO_EMAIL_USER || process.env.BREVO_SMTP_PASS);
+  const host = process.env.BREVO_SMTP_HOST || (hasBrevoConfig ? "smtp-relay.brevo.com" : "smtp.gmail.com");
   const port = Number(process.env.BREVO_SMTP_PORT || 587);
-  const user = process.env.BREVO_SMTP_USER;
-  const pass = process.env.BREVO_SMTP_PASS;
+  const user = process.env.BREVO_SMTP_USER || process.env.BREVO_EMAIL_USER || process.env.GMAIL_USER;
+  const pass = process.env.BREVO_SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
 
   if (!user || !pass) {
-    throw new Error("Brevo SMTP credentials missing. Set BREVO_SMTP_USER and BREVO_SMTP_PASS in .env");
+    throw new Error("No SMTP credentials configured. Set BREVO_SMTP_USER/BREVO_SMTP_PASS or GMAIL_USER/GMAIL_APP_PASSWORD in .env");
   }
 
   return nodemailer.createTransport({
@@ -50,7 +51,7 @@ export const sendMail = async ({
   }
 
   const fromName = process.env.MAIL_FROM_NAME || "University Management System";
-  const fromEmail = process.env.MAIL_FROM_EMAIL || process.env.BREVO_SMTP_USER;
+  const fromEmail = process.env.MAIL_FROM_EMAIL || process.env.BREVO_SMTP_USER || process.env.BREVO_EMAIL_USER || process.env.GMAIL_USER;
 
   if (!fromEmail) {
     throw new Error("MAIL_FROM_EMAIL missing in .env");
