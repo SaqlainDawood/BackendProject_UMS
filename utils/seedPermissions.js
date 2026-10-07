@@ -179,6 +179,13 @@ const PERMISSIONS = [
   { module: "studentapplication", action: "view",    label: "View Student Applications",    category: "academics" },
   { module: "studentapplication", action: "approve", label: "Approve Student Applications", category: "academics" },
   { module: "studentapplication", action: "reject",  label: "Reject Student Applications",  category: "academics" },
+
+  // ---------- STUDENT ACADEMIC NUMBERS ----------
+  { module: "studentacademicnumber", action: "view",   label: "View Student Academic Numbers",   category: "academics" },
+  { module: "studentacademicnumber", action: "assign", label: "Assign Student Academic Numbers", category: "academics" },
+  { module: "studentacademicnumber", action: "update", label: "Update Student Academic Numbers", category: "academics" },
+  { module: "studentacademicnumber", action: "clear",  label: "Clear Student Academic Numbers",  category: "academics" },
+  { module: "studentacademicnumber", action: "export", label: "Export Student Academic Numbers", category: "academics" },
 ];
 
 /* ============================================================

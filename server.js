@@ -16,6 +16,7 @@ import timetableRoutes from "./Routes/admin/timetable.routes.js";
 import dashboardRoutes from "./Routes/admin/dashboard.routes.js";
 import userRoutes from "./Routes/admin/userRoutes.js";
 import studentAdminRoutes from "./Routes/admin/student.routes.js";
+import studentAcademicNumberRoutes from "./Routes/studentAcademicNumber.routes.js";
 import { authMiddleware } from "./Middleware/authMiddleware.js";
 import { checkPermission } from "./Middleware/checkPermission.js";
 import {
@@ -101,6 +102,7 @@ app.use('/api', EnrollmentRoutes);
 app.use("/api/cms", cmsRoutes);
 
 app.use("/api/users", userRoutes);
+app.use("/api/admin", studentAcademicNumberRoutes);
 app.get("/api/admin/students", authMiddleware, checkPermission("student:view"), getAllStudentUsers);
 app.get("/api/admin/students/:userId", authMiddleware, checkPermission("student:view"), getStudentUserById);
 app.get("/api/admin/stats/students/all", authMiddleware, checkPermission("student:view"), getAllStudentUsers);

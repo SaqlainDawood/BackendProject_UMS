@@ -146,6 +146,41 @@ const StudentSchema = new mongoose.Schema(
       default: null,
     },
 
+    academicInfo: {
+      registrationNumber: {
+        type: String,
+        trim: true,
+        uppercase: true,
+        default: null,
+        sparse: true,
+      },
+      rollNumber: {
+        type: String,
+        trim: true,
+        uppercase: true,
+        default: null,
+        sparse: true,
+      },
+      scope: {
+        departmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', default: null },
+        degreeClassId: { type: mongoose.Schema.Types.ObjectId, ref: 'DegreeClass', default: null },
+        sessionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Session', default: null },
+        batchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Batch', default: null },
+      },
+      registrationAssignedAt: { type: Date, default: null },
+      rollNumberAssignedAt: { type: Date, default: null },
+      registrationAssignedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
+      rollNumberAssignedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
+    },
+
     personalInfo: { type: PersonalInfoSchema, default: () => ({}) },
     familyInfo: { type: FamilyInfoSchema, default: () => ({}) },
     education: { type: [EducationSchema], default: [] },
@@ -162,6 +197,26 @@ const StudentSchema = new mongoose.Schema(
 
 StudentSchema.index({ email: 1 });
 StudentSchema.index({ user: 1 });
+StudentSchema.index(
+  { 'academicInfo.registrationNumber': 1 },
+  { unique: true, sparse: true }
+);
+StudentSchema.index(
+  {
+    'academicInfo.rollNumber': 1,
+    'academicInfo.scope.departmentId': 1,
+    'academicInfo.scope.degreeClassId': 1,
+    'academicInfo.scope.sessionId': 1,
+    'academicInfo.scope.batchId': 1,
+  },
+  {
+    unique: true,
+    sparse: true,
+    partialFilterExpression: {
+      'academicInfo.rollNumber': { $type: 'string' },
+    },
+  }
+);
 
 const Student =
   mongoose.models.Student || mongoose.model("Student", StudentSchema);
