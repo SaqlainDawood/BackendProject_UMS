@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import axios from "axios";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -18,27 +18,7 @@ const htmlToText = (html = "") => {
     .trim();
 };
 
-const normalizeCredential = (value) => String(value || "").replace(/\s+/g, "").trim();
-
-const getTransporter = () => {
-  const hasBrevoConfig = Boolean(process.env.BREVO_SMTP_USER || process.env.BREVO_EMAIL_USER || process.env.BREVO_SMTP_PASS);
-  const host = process.env.BREVO_SMTP_HOST || (hasBrevoConfig ? "smtp-relay.brevo.com" : "smtp.gmail.com");
-  const port = Number(process.env.BREVO_SMTP_PORT || 587);
-  const user = normalizeCredential(process.env.BREVO_SMTP_USER || process.env.BREVO_EMAIL_USER || process.env.GMAIL_USER);
-  const pass = normalizeCredential(process.env.BREVO_SMTP_PASS || process.env.GMAIL_APP_PASSWORD);
-
-  if (!user || !pass) {
-    throw new Error("No SMTP credentials configured. Set BREVO_SMTP_USER/BREVO_SMTP_PASS or GMAIL_USER/GMAIL_APP_PASSWORD in .env");
-  }
-
-  return nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
-    auth: { user, pass },
-    tls: { rejectUnauthorized: true },
-  });
-};
+const normalize = (value) => String(value ?? "").trim();
 
 export const sendMail = async ({
   to,
@@ -46,55 +26,100 @@ export const sendMail = async ({
   html,
   text,
   replyTo,
+  fromName,
+  fromEmail,
+  senderName,
+  senderEmail,
   unsubscribeUrl,
 }) => {
   if (!to || !subject || (!html && !text)) {
-    throw new Error("Missing required fields: to, subject, html/text");
+    return {
+      success: false,
+      error: "Missing required fields: to, subject, html/text",
+    };
   }
 
-  const fromName = process.env.MAIL_FROM_NAME || "University Management System";
-  const fromEmail = process.env.MAIL_FROM_EMAIL || process.env.BREVO_SMTP_USER || process.env.BREVO_EMAIL_USER || process.env.GMAIL_USER;
-
-  if (!fromEmail) {
-    throw new Error("MAIL_FROM_EMAIL missing in .env");
+  const apiKey = normalize(process.env.BREVO_API_KEY);
+  if (!apiKey) {
+    return {
+      success: false,
+      error: "BREVO_API_KEY missing in environment",
+    };
   }
 
-  const finalText = text || htmlToText(html || "");
-  const finalReplyTo = replyTo || process.env.MAIL_REPLY_TO || fromEmail;
+  const finalFromName = normalize(senderName || fromName || process.env.MAIL_FROM_NAME || "University Management System");
+  const finalFromEmail = normalize(senderEmail || fromEmail || process.env.MAIL_FROM_EMAIL || "");
+  const finalReplyTo = normalize(replyTo || process.env.MAIL_REPLY_TO || finalFromEmail);
   const finalUnsubscribeUrl = unsubscribeUrl || process.env.UNSUBSCRIBE_URL || null;
 
-  const headers = {};
-  if (finalUnsubscribeUrl) {
-    headers["List-Unsubscribe"] = `<${finalUnsubscribeUrl}>`;
-    headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click";
+  if (!finalFromEmail) {
+    return {
+      success: false,
+      error: "MAIL_FROM_EMAIL missing in environment",
+    };
   }
 
-  const transporter = getTransporter();
+  const payload = {
+    sender: {
+      name: finalFromName,
+      email: finalFromEmail,
+    },
+    to: [
+      {
+        email: String(to).trim(),
+        name: String(to).split("@")[0] || "User",
+      },
+    ],
+    subject: String(subject).trim(),
+    ...(html ? { htmlContent: html } : {}),
+    ...(text || html ? { textContent: text || htmlToText(html || "") } : {}),
+    ...(finalReplyTo ? { replyTo: { email: finalReplyTo, name: finalFromName } } : {}),
+    ...(finalUnsubscribeUrl
+      ? {
+          headers: {
+            "List-Unsubscribe": `<${finalUnsubscribeUrl}>`,
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+          },
+        }
+      : {}),
+  };
 
   try {
-    const info = await transporter.sendMail({
-      from: `"${fromName}" <${fromEmail}>`,
-      to,
-      replyTo: finalReplyTo,
-      subject,
-      text: finalText,
-      html: html || undefined,
-      headers,
+    const response = await axios.post("https://api.brevo.com/v3/smtp/email", payload, {
+      headers: {
+        "api-key": apiKey,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      timeout: 20000,
     });
+
+    const messageId = response?.data?.messageId || response?.data?.id || null;
 
     return {
       success: true,
       provider: "brevo",
-      messageId: info.messageId || null,
-      accepted: info.accepted || [],
-      rejected: info.rejected || [],
+      messageId,
+      data: response.data,
     };
   } catch (error) {
-    console.error("Email send failed:", {
-      to,
-      subject,
-      error: error.message,
+    const status = error.response?.status || "n/a";
+    const message =
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      error.message ||
+      "Brevo email send failed";
+
+    console.error("Brevo email send failed:", {
+      status,
+      to: String(to).slice(0, 120),
+      subject: String(subject).slice(0, 180),
+      error: message,
     });
-    throw error;
+
+    return {
+      success: false,
+      error: message,
+    };
   }
 };
