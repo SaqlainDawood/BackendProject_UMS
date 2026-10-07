@@ -1,6 +1,7 @@
 import Role from "../../Models/RoleModel.js";
 import Permission from "../../Models/PermissionModel.js";
 import User from "../../Models/UserModel.js";
+import { getRoleOptions } from "../../utils/roleOptions.js";
 
 const slugify = (str) =>
   str
@@ -90,6 +91,26 @@ export const getAllRoles = async (req, res) => {
     return res.json({ success: true, count: result.length, roles: result });
   } catch (err) {
     console.error("getAllRoles error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+export const getRoleOptionsList = async (req, res) => {
+  try {
+    const roles = await Role.find({ isActive: true })
+      .select("_id name slug isActive")
+      .sort({ name: 1 });
+
+    const options = getRoleOptions(roles);
+
+    return res.json({
+      success: true,
+      count: options.length,
+      roles: options,
+      options,
+    });
+  } catch (err) {
+    console.error("getRoleOptionsList error:", err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };

@@ -18,12 +18,14 @@ const htmlToText = (html = "") => {
     .trim();
 };
 
+const normalizeCredential = (value) => String(value || "").replace(/\s+/g, "").trim();
+
 const getTransporter = () => {
   const hasBrevoConfig = Boolean(process.env.BREVO_SMTP_USER || process.env.BREVO_EMAIL_USER || process.env.BREVO_SMTP_PASS);
   const host = process.env.BREVO_SMTP_HOST || (hasBrevoConfig ? "smtp-relay.brevo.com" : "smtp.gmail.com");
   const port = Number(process.env.BREVO_SMTP_PORT || 587);
-  const user = process.env.BREVO_SMTP_USER || process.env.BREVO_EMAIL_USER || process.env.GMAIL_USER;
-  const pass = process.env.BREVO_SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
+  const user = normalizeCredential(process.env.BREVO_SMTP_USER || process.env.BREVO_EMAIL_USER || process.env.GMAIL_USER);
+  const pass = normalizeCredential(process.env.BREVO_SMTP_PASS || process.env.GMAIL_APP_PASSWORD);
 
   if (!user || !pass) {
     throw new Error("No SMTP credentials configured. Set BREVO_SMTP_USER/BREVO_SMTP_PASS or GMAIL_USER/GMAIL_APP_PASSWORD in .env");
